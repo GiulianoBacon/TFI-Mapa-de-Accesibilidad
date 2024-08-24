@@ -29,5 +29,112 @@
 
 .map {
   width: 100%;
-  height: 50VH;
+  height: 81.8VH;
+}
+
+.header {
+  background-color: #333;
+  color: white;
+  padding: 10px 0;
+}
+
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 10px;
+}
+
+.logo {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo-image {
+  height: 60px; /* Ajusta la altura según sea necesario */
+  margin-right: 30px; /* Espacio entre el logo y el contenido */
+}
+
+.logo-text {
+  font-size: 18px; /* Ajusta el tamaño de fuente según sea necesario */
+  color: white; /* Color del texto */
+  font-weight: bold;
+}
+
+.nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+
+.nav li {
+  margin-left: 20px;
+}
+
+.nav a {
+  color: white;
+  text-decoration: none;
+  font-size: 18px;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+}
+
+.footer {
+  background-color: #333;
+  color: #fff;
+  padding: 20px 0;
+  text-align: left;
+  margin-top: auto; /* Empuja el footer al final del contenedor */
+}
+
+.footer .container {
+  max-width: 1900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+}
+
+.footer-logo h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.footer-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+}
+
+.footer-nav li {
+  display: inline;
+  margin: 0 10px;
+}
+
+.footer-nav a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.footer-nav a:hover {
+  text-decoration: underline;
+}
+
+.footer-info {
+  margin-top: 10px;
+  font-size: 0.8rem;
 }
