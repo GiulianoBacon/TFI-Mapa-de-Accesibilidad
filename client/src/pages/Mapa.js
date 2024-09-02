@@ -12,6 +12,11 @@ import { createStringXY } from 'ol/coordinate.js';
 import { defaults as defaultControls } from 'ol/control.js';
 import 'ol/ol.css';
 import { fromLonLat } from 'ol/proj';
+import VectorLayer from 'ol/layer/Vector.js';
+import VectorSource from 'ol/source/Vector.js';
+import Feature from 'ol/Feature.js';
+import Point from 'ol/geom/Point.js';
+import { Icon, Style } from 'ol/style.js';
 
 const Mapa = () => {
   const mapElement = useRef(null); // Referencia al div del mapa
@@ -25,7 +30,11 @@ const Mapa = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]); // Estado para las sugerencias
 
-  
+  // Capa de vectores para los marcadores
+  const markerLayer = useRef(new VectorLayer({
+    source: new VectorSource(),
+  }));
+
   useEffect(() => {
     const map = new Map({
       target: mapElement.current,
@@ -33,6 +42,7 @@ const Mapa = () => {
         new TileLayer({
           source: new OSM(),
         }),
+        markerLayer.current // Añadir la capa de marcadores al mapa
       ],
       view: new View({
         center: fromLonLat([-58.3920, -34.7334]), // Coordenadas iniciales
@@ -85,10 +95,31 @@ const Mapa = () => {
       if (mapRef.current) {
         mapRef.current.getView().setCenter(coordinates);
         mapRef.current.getView().setZoom(16); // Puedes ajustar el nivel de zoom
+
+        // Añadir el marcador en la ubicación
+        addMarker(coordinates);
       }
     } else {
       alert('No se encontraron resultados.');
     }
+  };
+
+  const addMarker = (coordinates) => {
+    const marker = new Feature({
+      geometry: new Point(coordinates),
+    });
+
+    marker.setStyle(new Style({
+      image: new Icon({
+        anchor: [0.5, 1],
+        src: 'https://cdn-icons-png.flaticon.com/512/684/684850.png', // Cambia esto por la URL de tu icono
+        scale: 0.07
+      }),
+    }));
+
+    // Limpiar marcadores anteriores y añadir el nuevo
+    markerLayer.current.getSource().clear();
+    markerLayer.current.getSource().addFeature(marker);
   };
 
   const handleInputChange = async () => {
@@ -221,7 +252,7 @@ const Mapa = () => {
                   checked={baños_aptos}
                   onChange={(event) => setBaños_aptos(event.target.checked)}
                 />
-                <label>¿Baño Apto?</label>
+                <label>¿Baños Apto?</label>
               </div>
               <div className="checkbox-inline">
                 <input
