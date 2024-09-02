@@ -62,6 +62,36 @@ app.get("/usuarios",(req, res)=>{
     })
 });
 
+// Ruta de login
+app.post('/login', (req, res) => {
+    const { email, contraseña } = req.body;
+  
+    if (!email || !contraseña) {
+      return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
+    }
+  
+    // Consulta a la base de datos para encontrar el usuario
+    db.query('SELECT * FROM usuario WHERE email = ?', [email], (err, results) => {
+      if (err) {
+        console.error('Error en la consulta:', err);
+        return res.status(500).json({ success: false, message: 'Error al intentar iniciar sesión' });
+      }
+  
+      if (results.length > 0) {
+        // Usuario encontrado, ahora verificar la contraseña
+        const user = results[0];
+        // En un entorno real, deberías usar bcrypt para comparar contraseñas hasheadas
+        if (contraseña === user.contraseña) {
+          res.json({ success: true, message: 'Login exitoso' });
+        } else {
+          res.json({ success: false, message: 'Email o contraseña incorrectos' });
+        }
+      } else {
+        res.json({ success: false, message: 'Email o contraseña incorrectos' });
+      }
+    });
+  });
+
 app.listen(3001,()=>{
     console.log("Corriendo en el puerto 3001")
 })

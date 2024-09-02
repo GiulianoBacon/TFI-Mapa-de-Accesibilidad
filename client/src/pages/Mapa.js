@@ -9,23 +9,23 @@ import OSM from 'ol/source/OSM.js';
 import TileLayer from 'ol/layer/Tile.js';
 import View from 'ol/View.js';
 import { createStringXY } from 'ol/coordinate.js';
-import {defaults as defaultControls} from 'ol/control.js';
+import { defaults as defaultControls } from 'ol/control.js';
 import 'ol/ol.css';
 import { fromLonLat } from 'ol/proj';
 
-
-
-
 const Mapa = () => {
-
   const mapElement = useRef(null); // Referencia al div del mapa
   const mousePositionElement = useRef(null); // Referencia al div de la posición del mouse
+  const searchInputRef = useRef(null); // Referencia al campo de búsqueda
+  const mapRef = useRef(null); // Referencia a la instancia del mapa
 
   const [projection, setProjection] = useState('EPSG:4326');
   const [precision, setPrecision] = useState(4);
   const mousePositionControl = useRef(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState([]); // Estado para las sugerencias
 
+  
   useEffect(() => {
     const map = new Map({
       target: mapElement.current,
@@ -35,10 +35,12 @@ const Mapa = () => {
         }),
       ],
       view: new View({
-        center: fromLonLat([0, 0]),
-        zoom: 2,
+        center: fromLonLat([-58.3920, -34.7334]), // Coordenadas iniciales
+        zoom: 16, // Nivel de zoom inicial
       }),
     });
+
+    mapRef.current = map; // Guardar la instancia del mapa en el ref
 
     mousePositionControl.current = new MousePosition({
       coordinateFormat: createStringXY(precision),
@@ -49,7 +51,7 @@ const Mapa = () => {
 
     map.addControl(mousePositionControl.current);
 
-    const handleMapDblClick = () => {
+    const handleMapDblClick = (event) => {
       setIsPopupOpen(true);
     };
     mapElement.current.addEventListener('dblclick', handleMapDblClick);
@@ -73,7 +75,42 @@ const Mapa = () => {
     }
   }, [precision]);
 
+  const handleSearch = async () => {
+    const query = searchInputRef.current.value;
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+    const data = await response.json();
+    if (data.length > 0) {
+      const [lon, lat] = [data[0].lon, data[0].lat];
+      const coordinates = fromLonLat([parseFloat(lon), parseFloat(lat)]);
+      if (mapRef.current) {
+        mapRef.current.getView().setCenter(coordinates);
+        mapRef.current.getView().setZoom(16); // Puedes ajustar el nivel de zoom
+      }
+    } else {
+      alert('No se encontraron resultados.');
+    }
+  };
 
+  const handleInputChange = async () => {
+    const query = searchInputRef.current.value;
+    if (query.length > 5) { // Solo buscar si el texto tiene más de 2 caracteres
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1`);
+      if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);  
+    }
+      const data = await response.json();
+      setSuggestions(data); // Actualiza las sugerencias
+    } 
+    else {
+      setSuggestions([]); // Limpiar las sugerencias si el texto es muy corto
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    searchInputRef.current.value = suggestion.display_name;
+    handleSearch();
+    setSuggestions([]); // Limpiar las sugerencias al seleccionar una
+  };
 
   const closePopup = () => setIsPopupOpen(false);
 
@@ -113,6 +150,29 @@ const Mapa = () => {
 
   return (
     <div>
+      <div>
+        <input
+          type="text"
+          placeholder="Buscar ubicación..."
+          ref={searchInputRef}
+          onChange={handleInputChange} // Actualiza sugerencias al escribir
+          className="form-control"
+        />
+        <div className="button-container">
+        <button onClick={handleSearch} className="btn btn-primary custom-button">
+          Buscar
+        </button>
+      </div>
+        {suggestions.length > 0 && (
+          <ul className="suggestions-list">
+            {suggestions.map((suggestion, index) => (
+              <li key={index} onClick={() => handleSuggestionClick(suggestion)}>
+                {suggestion.display_name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <div ref={mapElement} className="map"></div>
       <div ref={mousePositionElement} id="mouse-position"></div>
 
