@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import Axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [contraseña, setContraseña] = useState('');
   const [message, setMessage] = useState('');
+  const navigate = useNavigate(); // Hook para la redirección
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -17,7 +19,8 @@ const Login = () => {
       
       if (response.data.success) {
         setMessage('Login exitoso');
-        // Aquí puedes redirigir al usuario a otra página si el login es exitoso
+        navigate('/'); // Redirige a la página de inicio
+        
       } else {
         setMessage(response.data.message);
       }
