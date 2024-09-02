@@ -36,6 +36,7 @@ const Mapa = () => {
   }));
 
   useEffect(() => {
+    if (!mapElement.current) return;
     const map = new Map({
       target: mapElement.current,
       layers: [
@@ -64,11 +65,16 @@ const Mapa = () => {
     const handleMapDblClick = (event) => {
       setIsPopupOpen(true);
     };
+
+    // Verifica la existencia de mapElement.current antes de agregar el eventListener
     mapElement.current.addEventListener('dblclick', handleMapDblClick);
 
     return () => {
-      map.setTarget(null); // Limpiar el mapa al desmontar el componente
-      mapElement.current.removeEventListener('dblclick', handleMapDblClick);
+      if (mapElement.current) {
+        mapElement.current.removeEventListener('dblclick', handleMapDblClick);
+      }
+      // Limpiar el mapa al desmontar el componente
+      map.setTarget(null);
     };
   }, []);
 
@@ -128,6 +134,7 @@ const Mapa = () => {
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1`);
       if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);  
+          
     }
       const data = await response.json();
       setSuggestions(data); // Actualiza las sugerencias
