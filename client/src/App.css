@@ -205,3 +205,40 @@
   font-size: 1.25rem; /* Aumenta el tamaño del texto del botón */
   padding: 0.75rem 1.5rem; /* Ajusta el relleno del botón para hacerlo más grande */
 }
+
+.home-container {
+  height: 80.7vh;
+  background-image: url('https://tse1.mm.bing.net/th?id=OIG2.QMJRo5LYyUJR.5ni5goA&pid=ImgGn'); /* Cambia la URL por la de tu imagen */
+  background-size: 95% ;
+  background-position: center;
+  position: relative;
+}
+
+.overlay {
+  background-color: rgba(0, 0, 0, 0.6); /* Fondo oscuro semitransparente */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.content {
+  color: white;
+  max-width: 800px;
+  padding: 20px;
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: bold;
+}
+
+.description {
+  font-size: 1.2rem;
+  margin-top: 20px;
+}
+
