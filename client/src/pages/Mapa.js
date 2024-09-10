@@ -9,6 +9,7 @@ import OSM from 'ol/source/OSM.js';
 import TileLayer from 'ol/layer/Tile.js';
 import View from 'ol/View.js';
 import { createStringXY } from 'ol/coordinate.js';
+import { toLonLat } from 'ol/proj.js';
 import { defaults as defaultControls } from 'ol/control.js';
 import 'ol/ol.css';
 import { fromLonLat } from 'ol/proj';
@@ -17,6 +18,7 @@ import VectorSource from 'ol/source/Vector.js';
 import Feature from 'ol/Feature.js';
 import Point from 'ol/geom/Point.js';
 import { Icon, Style } from 'ol/style.js';
+import Overlay from 'ol/Overlay.js';
 
 const Mapa = () => {
   const mapElement = useRef(null); // Referencia al div del mapa
@@ -49,9 +51,13 @@ const Mapa = () => {
         center: fromLonLat([-58.3920, -34.7334]), // Coordenadas iniciales
         zoom: 16, // Nivel de zoom inicial
       }),
+
+      
     });
 
+
     mapRef.current = map; // Guardar la instancia del mapa en el ref
+
 
     mousePositionControl.current = new MousePosition({
       coordinateFormat: createStringXY(precision),
@@ -63,6 +69,16 @@ const Mapa = () => {
     map.addControl(mousePositionControl.current);
 
     const handleMapDblClick = (event) => {
+      const coordinates = mapRef.current.getEventCoordinate(event);
+
+       // Convertir las coordenadas a EPSG:4326 (latitud y longitud)
+      const [lon, lat] = coordinates;
+      const [longitude, latitude] = toLonLat([lon, lat]); // Convierte a EPSG:4326
+
+      // Guardar las coordenadas en los estados
+      setLatitud(latitude.toFixed(6)); // Limitamos los decimales si lo deseas
+      setLongitud(longitude.toFixed(6));
+
       setIsPopupOpen(true);
     };
 
@@ -123,6 +139,8 @@ const Mapa = () => {
       }),
     }));
 
+    
+
     // Limpiar marcadores anteriores y añadir el nuevo
     markerLayer.current.getSource().clear();
     markerLayer.current.getSource().addFeature(marker);
@@ -152,7 +170,8 @@ const Mapa = () => {
 
   const closePopup = () => setIsPopupOpen(false);
 
-  const [Ubicación_idUbicación, setUbicación_idUbicación] = useState(1);
+  const [latitud, setLatitud] = useState("");
+  const [longitud, setLongitud] = useState("");
   const [Usuario_idUsuario, setUsuario_idUsuario] = useState(1);
   const [espacios_aptos, setEspacios_aptos] = useState(false);
   const [ascensor_apto, setAscensor_apto] = useState(false);
@@ -168,7 +187,8 @@ const Mapa = () => {
   const addOpinion_establecimiento = (event) => {
     event.preventDefault();
     Axios.post("http://localhost:3001/createOpinion_establecimiento", {
-      Ubicación_idUbicación,
+      latitud,
+      longitud,
       Usuario_idUsuario,
       espacios_aptos,
       ascensor_apto,
@@ -218,6 +238,27 @@ const Mapa = () => {
         <div className="popup-overlay">
           <div className="popup-form">
             <form onSubmit={addOpinion_establecimiento}>
+               {/* Campos de latitud y longitud (solo lectura) */}
+            <div className="form-group">
+              <label>Latitud:</label>
+              <input
+                type="text"
+                name="latitud"
+                value={latitud}
+                readOnly
+                className="form-control"
+              />
+            </div>
+            <div className="form-group">
+              <label>Longitud:</label>
+              <input
+                type="text"
+                name="longitud"
+                value={longitud}
+                readOnly
+                className="form-control"
+              />
+            </div>
               <div className="checkbox-inline">
                 <input
                   type="checkbox"

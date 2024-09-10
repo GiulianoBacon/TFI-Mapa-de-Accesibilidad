@@ -15,7 +15,8 @@ const db = mysql.createConnection({
 
 
 app.post("/createOpinion_establecimiento",(req, res)=>{
-    const Ubicación_idUbicación = req.body.Ubicación_idUbicación;
+    const latitud = req.body.latitud;
+    const longitud = req.body.longitud;
     const Usuario_idUsuario = req.body.Usuario_idUsuario;
     const espacios_aptos = req.body.espacios_aptos;
     const ascensor_apto = req.body.ascensor_apto;
@@ -28,7 +29,7 @@ app.post("/createOpinion_establecimiento",(req, res)=>{
     const descripcion_rampa_externa = req.body.descripcion_rampa_externa;
     const descripcion_espacios = req.body.descripcion_espacios;
     
-    db.query('INSERT INTO opinion_establecimiento(Ubicación_idUbicación,Usuario_idUsuario,espacios_aptos,ascensor_apto,baños_aptos,puerta_apta,rampa_interna_apta,rampa_externa_apta,descripcion_rampa_interna,descripcion_ascensor,descripcion_rampa_externa,descripcion_espacios,fecha) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,curdate())',[Ubicación_idUbicación,Usuario_idUsuario,espacios_aptos,ascensor_apto,baños_aptos,puerta_apta,rampa_interna_apta,rampa_externa_apta,descripcion_rampa_interna,descripcion_ascensor,descripcion_rampa_externa,descripcion_espacios],(err, result)=>{
+    db.query('INSERT INTO opinion_establecimiento(latitud, longitud,Usuario_idUsuario,espacios_aptos,ascensor_apto,baños_aptos,puerta_apta,rampa_interna_apta,rampa_externa_apta,descripcion_rampa_interna,descripcion_ascensor,descripcion_rampa_externa,descripcion_espacios,fecha) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,curdate())',[latitud,longitud,Usuario_idUsuario,espacios_aptos,ascensor_apto,baños_aptos,puerta_apta,rampa_interna_apta,rampa_externa_apta,descripcion_rampa_interna,descripcion_ascensor,descripcion_rampa_externa,descripcion_espacios],(err, result)=>{
         if(err){
             console.log(err);
         } else {
@@ -82,6 +83,17 @@ app.post('/login', (req, res) => {
       res.json({ success: false, message: 'Usuario no encontrado' });
     }
   });
+});
+
+app.get("/getMarkers", (req, res) => {
+    db.query("SELECT latitud, longitud, descripcion_espacios, descripcion_ascensor, descripcion_rampa_interna, descripcion_rampa_externa FROM opinion_establecimiento", (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send("Error al obtener las marcas");
+        } else {
+            res.json(result);
+        }
+    });
 });
 
 app.listen(3001,()=>{
