@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Mapa de Accesibilidad Colaborativo</title>
+		<link rel="stylesheet" href="styles.css">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+	</head>
+	<body>
+        <div id="header-placeholder"></div>
+
+        <div>
+           <div class="button-container">
+                <button onClick="handleSearch()" class="btn btn-primary custom-button">Buscar</button>
+                <input id="busqueda" type="text" placeholder="Buscar ubicación..." onInput="handleInputChange()" class="form-control"/>
+            
+            </div>
+            <ul id="suggestions" class="suggestions-list"></ul>
+        </div>
+
+        <div id="map" class="map"></div>
+
+        <div class="modal" id="modalAddOpinion" role="dialog" style="display: none;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <form onSubmit="addOpinion_establecimiento(event)">
+                            <div class="form-group">
+                                <button id="closeModalAddOpinion" type="button" class="close" data-dismiss="modal">&times;</button>
+                                <div class="form-group row">
+                                    <label for="latitud" class="col-sm-2 col-form-label">Latitud:</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" readonly class="form-control-plaintext" name="latitud" id="latitud" value="latitud">
+                                    </div>
+                                    <label for="longitud" class="col-sm-2 col-form-label">longitud:</label>
+                                    <div class="col-sm-4">
+                                        <input type="text" readonly class="form-control-plaintext" name="longitud" id="longitud" value="longitud">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descripción espacios:</label>
+                                <div class="float-right">
+                                    <label>¿Los espacios son aptos?</label>
+                                    <input type="checkbox" name="espacios_aptos"/>
+                                </div>
+                                <input type="text" name="descripcion_espacios" class="form-control"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descripción ascensor:</label>
+                                <div class="float-right">
+                                    <label>¿El ascensor es apto?</label>
+                                    <input type="checkbox" name="ascensor_apto"/>
+                                </div>
+                                <input type="text" name="descripcion_ascensor" class="form-control"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label>¿Baños Aptos?</label>
+                                <input type="checkbox" name="baños_aptos"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label>¿Puerta Apta?</label>
+                                <input type="checkbox" name="puerta_apta"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descripción rampa interna:</label>
+                                <div class="float-right">
+                                    <label>¿La rampa interna es apta?</label>
+                                    <input type="checkbox" name="rampa_interna_apta"/>
+                                </div>
+                                <input type="text" name="descripcion_rampa_interna" class="form-control"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descripción rampa externa:</label>
+                                <div class="float-right">
+                                    <label>¿La rampa externa es apta?</label>
+                                    <input type="checkbox" name="rampa_externa_apta"/>
+                                </div>
+                                <input type="text" name="descripcion_rampa_externa" class="form-control"/>
+                            </div>
+                            
+                            <button type="submit" class="float-right btn btn-success"> Enviar </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+		<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+			integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+			crossorigin=""></script>
+		<script src="mapa.js"></script>
+        <script src="header.js"></script>
+        <script>
+            loadHeader();
+        </script>
+	</body>
+</html>
