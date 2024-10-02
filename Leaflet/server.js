@@ -44,16 +44,28 @@ app.post("/createOpinion_establecimiento", (req, res) => {
     const { latitud, longitud, Usuario_idUsuario, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios } = req.body;
     console.log("guardando opinion");
     db.query(
-        'INSERT INTO opinion_establecimiento(latitud, longitud, Usuario_idUsuario, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, fecha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, curdate())', 
-                                            [latitud, longitud, Usuario_idUsuario, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios], 
+        'INSERT INTO ubicación(latitud, longitud, direccion) VALUES (?, ?, ?);', 
+                                            [latitud, longitud, "placeholder"], 
         (err, result) => {
             if (err) {
                 console.log(err);
-                return res.status(500).json({ error: "Error al guardar la opinión" }); // Enviar error al cliente
+                return res.status(500).json({ error: "Error al guardar la ubicacion de la opinión" }); // Enviar error al cliente
             }
-            res.json({ message: "Opinión de establecimiento registrada con éxito" }); // Responder con un mensaje JSON
+            const Ubicación_idUbicación = result.insertId;
+            db.query(
+                'INSERT INTO opinion_establecimiento(Ubicación_idUbicación, Usuario_idUsuario, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, fecha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, curdate())', 
+                                                    [Ubicación_idUbicación, Usuario_idUsuario, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios], 
+                (err, result) => {
+                    if (err) {
+                        console.log(err);
+                        return res.status(500).json({ error: "Error al guardar la opinión" }); // Enviar error al cliente
+                    }
+                    res.json({ message: "Opinión de establecimiento registrada con éxito" }); // Responder con un mensaje JSON
+                }
+            );
         }
     );
+    
 });
 
 app.post("/create", (req, res) => {
