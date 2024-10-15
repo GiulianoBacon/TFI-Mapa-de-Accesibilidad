@@ -71,7 +71,6 @@ app.post("/createOpinion_establecimiento", (req, res) => {
 app.post("/create", (req, res) => {
     const { Email, Contraseña, Usuario } = req.body;
 
-
     bcrypt.hash(Contraseña, 10, (err, hash) => {  // El número 10 es el "salt rounds", ajustable para seguridad/performance
         if (err) {
             console.log(err);
@@ -103,10 +102,9 @@ app.get("/usuarios", (req, res) => {
 });
 
 // Ruta de login
-
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
-  });
+});
 
 app.post('/login', (req, res) => {
     const { email, contraseña } = req.body;
@@ -131,12 +129,28 @@ app.post('/login', (req, res) => {
     });
 });
 
-app.get("/getMarkers", (req, res) => {
-    db.query("SELECT latitud, longitud, descripcion_espacios, descripcion_ascensor, descripcion_rampa_interna, descripcion_rampa_externa FROM opinion_establecimiento", (err, result) => {
+// Ruta para obtener todas las opiniones
+app.get("/getOpinions", (req, res) => {
+    const query = `
+        SELECT 
+            opinion_establecimiento.*,
+            ubicación.latitud,
+            ubicación.longitud,
+            usuario.usuario AS nombreUsuario
+        FROM 
+            opinion_establecimiento
+        INNER JOIN 
+            ubicación ON opinion_establecimiento.Ubicación_idUbicación = ubicación.idUbicación
+        INNER JOIN 
+            usuario ON opinion_establecimiento.Usuario_idUsuario = usuario.idUsuario
+    `;
+
+    db.query(query, (err, result) => {
         if (err) {
             console.log(err);
-            res.status(500).send("Error al obtener las marcas");
+            res.status(500).json({ error: "Error al obtener las opiniones" });
         } else {
+            console.log(result);
             res.json(result);
         }
     });

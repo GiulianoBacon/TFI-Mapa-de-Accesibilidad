@@ -1,10 +1,10 @@
 let map;
 let currentMarker;
-let timeout; 
+let timeout;
 
 document.addEventListener('DOMContentLoaded', () => {
     map = L.map('map').setView([-34.7334, -58.3920], 16);
-    
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     var mapDiv = document.getElementById('map');
     var modal = document.getElementById('modalAddOpinion');
 
-    mapDiv.addEventListener('dblclick', function() {
+    mapDiv.addEventListener('dblclick', function(event) {
         const latLng = map.mouseEventToLatLng(event);
         modal.style.display = 'block';
 
@@ -27,11 +27,46 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'none';
     });
 
+    // Llama a la función para obtener las opiniones cuando se carga la página
+    fetchOpinions();
 });
 
+// Función para obtener la lista de opiniones y marcarlas en el mapa
+async function fetchOpinions() {
+    try {
+        const response = await fetch('http://localhost:3001/getOpinions'); // Cambia esta URL según tu ruta
+        if (!response.ok) {
+            throw new Error(`Error al obtener opiniones: ${response.statusText}`);
+        }
+        const opinions = await response.json();
 
+        // Itera sobre cada opinión y la agrega al mapa como un marcador
+        opinions.forEach(opinion => {
+            const marker = L.marker([opinion.latitud, opinion.longitud]).addTo(map);
+            marker.bindPopup(`
+                <b>Opinión de usuario:</b> ${opinion.nombreUsuario}<br>
+                <b>Espacios aptos:</b> ${opinion.espacios_aptos ? 'Sí' : 'No'}<br>
+                <b>Ascensor apto:</b> ${opinion.ascensor_apto ? 'Sí' : 'No'}<br>
+                <b>Baños aptos:</b> ${opinion.baños_aptos ? 'Sí' : 'No'}<br>
+                <b>Puerta apta:</b> ${opinion.puerta_apta ? 'Sí' : 'No'}<br>
+                <b>Rampa interna apta:</b> ${opinion.rampa_interna_apta ? 'Sí' : 'No'}<br>
+                <b>Rampa externa apta:</b> ${opinion.rampa_externa_apta ? 'Sí' : 'No'}<br>
+                <b>Descripción de los espacios:</b> ${opinion.descripcion_espacios || 'No disponible'}<br>
+                <b>Descripción del ascensor:</b> ${opinion.descripcion_ascensor || 'No disponible'}<br>
+                <b>Descripción de la rampa interna:</b> ${opinion.descripcion_rampa_interna || 'No disponible'}<br>
+                <b>Descripción de la rampa externa:</b> ${opinion.descripcion_rampa_externa || 'No disponible'}<br>
+                <b>Fecha:</b> ${opinion.fecha}
+            `);
+        });
+    } catch (error) {
+        console.error('Hubo un problema al obtener las opiniones:', error);
+    }
+}
+
+
+// Función para manejar la búsqueda y centrar el mapa
 async function handleSearch() {
-    const query = document.getElementById('busqueda')
+    const query = document.getElementById('busqueda');
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.value)}`);
     const data = await response.json();
     if (data.length > 0) {
@@ -42,8 +77,9 @@ async function handleSearch() {
         }
         currentMarker = L.marker([parseFloat(lat), parseFloat(lon)]).addTo(map);
     }
-};
+}
 
+// Función para manejar los cambios en el input de búsqueda con retraso
 async function handleInputChange() {
     clearTimeout(timeout);
 
@@ -66,13 +102,13 @@ async function handleInputChange() {
             setSuggestions([]); // Limpiar las sugerencias si el texto es muy corto
         }
     }, 500); // Espera 500 milisegundos antes de ejecutar la búsqueda
-};
+}
 
-
-function setSuggestions(data){
+// Función para mostrar las sugerencias de búsqueda
+function setSuggestions(data) {
     const suggestionsList = document.getElementById('suggestions');
     suggestionsList.innerHTML = '';
-  
+
     if (data.length === 0) {
         const li = document.createElement('li');
         li.textContent = 'No hay sugerencias disponibles';
@@ -81,28 +117,30 @@ function setSuggestions(data){
     }
     
     data.forEach((item, index) => {
-      const li = document.createElement('li');
-      li.textContent = item.display_name;
-      li.setAttribute('key', index);
-      li.onclick = () => handleSuggestionClick(item);
+        const li = document.createElement('li');
+        li.textContent = item.display_name;
+        li.setAttribute('key', index);
+        li.onclick = () => handleSuggestionClick(item);
 
-      suggestionsList.appendChild(li);
+        suggestionsList.appendChild(li);
     });
-};
+}
 
-function handleSuggestionClick (suggestion) {
+// Función para manejar el clic en una sugerencia
+function handleSuggestionClick(suggestion) {
     const query = document.getElementById('busqueda');
     query.value = suggestion.display_name;
     handleSearch();
     const suggestionsList = document.getElementById('suggestions');
     suggestionsList.innerHTML = '';
-};
+}
 
-function addOpinion_establecimiento(event){
+// Función para agregar una nueva opinión desde el formulario
+function addOpinion_establecimiento(event) {
     event.preventDefault();
-  
+
     const formData = new FormData(event.target);
-  
+
     const data = {
         latitud: formData.get("latitud"),
         longitud: formData.get("longitud"),
@@ -118,7 +156,7 @@ function addOpinion_establecimiento(event){
         descripcion_rampa_externa: formData.get("descripcion_rampa_externa"),
         descripcion_espacios: formData.get("descripcion_espacios")
     };
-  
+
     fetch("http://localhost:3001/createOpinion_establecimiento", {
         method: "POST",
         headers: {
@@ -143,4 +181,4 @@ function addOpinion_establecimiento(event){
     .catch(error => {
         console.error("Hubo un problema con la solicitud:", error);
     });
-};
+}
