@@ -6,10 +6,15 @@
     <title>Mapa de Accesibilidad Colaborativo</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-</head>
+    <style>
+      .vh-75 {
+          height: calc(60vh); /* Asegúrate de que el contenedor ocupa el 75% de la altura de la vista */
+      }
+  </style>
+  </head>
 <body>
     <div id="header-placeholder"></div>
-
+    <section class="banner">
     <div class="d-flex justify-content-center align-items-center vh-75 mt-5 mb-5">
         <div class="card text-center card-custom">
           <div class="card-header">
@@ -36,7 +41,39 @@
           </div>
         </div>
     </div>
-    
+    </section>
+    <footer class="footer">
+      <div class="container container-footer">
+          <div class="menu-footer">
+              <div class="contact-info">
+                  <p class="title-footer">Información de Contacto</p>
+                  <ul>
+                      <li>
+                          Dirección: 29 de Septiembre 3901, Remedios de Escalada
+                      </li>
+                      <li>Teléfono: 011 5533-5600</li>
+                      <li>Email: licsistemas@unla.edu.ar </li>
+                  </ul>
+                  <div class="social-icons">
+
+                  </div>
+              </div>
+
+              <div class="information">
+                  <p class="title-footer">Información</p>
+                  <ul>
+                      <li><a href="#">Acerca de Nosotros</a></li>
+                  </ul>
+              </div>
+          </div>
+
+          <div class="copyright">
+              <p>
+                  Desarrollado por Camila Mathov y Giuliano Bacon para el mundo &copy; 2024
+              </p>
+          </div>
+      </div>
+  </footer>
     
     <script src="signup.js"></script>
     <script src="header.js"></script>
