@@ -11,17 +11,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     var mapDiv = document.getElementById('map');
     var modal = document.getElementById('modalAddOpinion');
+    const modalSelection = document.getElementById('modalSelection');
+    const optionEstablishment = document.getElementById('optionEstablishment');
+    const optionSidewalk = document.getElementById('optionSidewalk');
+
 
     mapDiv.addEventListener('dblclick', function(event) {
         const latLng = map.mouseEventToLatLng(event);
-        modal.style.display = 'block';
+        modalSelection.style.display = 'block';
 
+        // Evento para opción Establecimiento
+        optionEstablishment.onclick = () => {
+            console.log("Opción Establecimiento seleccionada");
+            modalSelection.style.display = 'none';
+            openEstablishmentOpinionModal(latLng);
+        };
+
+        // Evento para opción Vereda
+        optionSidewalk.onclick = () => {
+            console.log("Opción Vereda seleccionada");
+            modalSelection.style.display = 'none';
+            alert("Funcionalidad de Opinión de Vereda en desarrollo.");
+        };
+    });
+
+    closeModalSelection.onclick = function() {
+        modalSelection.style.display = 'none';
+    };
+
+    function openEstablishmentOpinionModal(latLng) {
+        const modal = document.getElementById('modalAddOpinion');
+        modal.style.display = 'block';
+        
         var long = document.getElementById('longitud');
         var lat = document.getElementById('latitud');
-
         long.value = latLng.lng.toFixed(8);
-        lat.value = latLng.lat.toFixed(8); 
-    });
+        lat.value = latLng.lat.toFixed(8);
+    }
+
 
     document.getElementById('closeModalAddOpinion').addEventListener('click', function() {
         modal.style.display = 'none';
@@ -139,6 +166,15 @@ function handleSuggestionClick(suggestion) {
 function addOpinion_establecimiento(event) {
     event.preventDefault();
 
+    // Verifica si el usuario está logueado
+    const loggedIn = localStorage.getItem('loggedIn') === 'true';
+
+    if (!loggedIn) {
+        alert('Debes iniciar sesión para publicar una opinión');
+        return; // No se permite continuar si el usuario no está logueado
+    }
+
+
     const formData = new FormData(event.target);
 
     const data = {
@@ -174,6 +210,11 @@ function addOpinion_establecimiento(event) {
     .then(data => {
         console.log(data);
         alert(data.message);
+         // Cierra el popup automáticamente después de que se haya mostrado el mensaje
+    setTimeout(() => {
+        var modal = document.getElementById('modalAddOpinion');
+        modal.style.display = 'none'; // Cierra el popup
+        }, 1000); // Espera 1 segundo antes de cerrar el popup
         event.target.reset();
         var modal = document.getElementById('modalAddOpinion');
         modal.style.display = 'none';
@@ -181,4 +222,6 @@ function addOpinion_establecimiento(event) {
     .catch(error => {
         console.error("Hubo un problema con la solicitud:", error);
     });
+
+    
 }

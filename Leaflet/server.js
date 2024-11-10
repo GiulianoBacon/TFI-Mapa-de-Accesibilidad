@@ -68,6 +68,41 @@ app.post("/createOpinion_establecimiento", (req, res) => {
     
 });
 
+// Ruta para crear una opinión sobre vereda pública
+app.post("/createOpinion_vereda", (req, res) => {
+    const { latitud, longitud, Usuario_idUsuario, vereda_apta, descripcion_vereda } = req.body;
+    console.log("Guardando opinión de vereda pública");
+
+    // Guardamos la ubicación en la tabla 'ubicación'
+    db.query(
+        'INSERT INTO ubicación(latitud, longitud, direccion) VALUES (?, ?, ?);', 
+        [latitud, longitud, "placeholder"], 
+        (err, result) => {
+            if (err) {
+                console.log(err);
+                return res.status(500).json({ error: "Error al guardar la ubicación de la opinión de vereda" });
+            }
+            
+            // Obtenemos el id de la ubicación que se acaba de insertar
+            const Ubicación_idUbicación = result.insertId;
+
+            // Insertamos la opinión de la vereda pública en la tabla 'Opinion_vereda'
+            db.query(
+                'INSERT INTO Opinion_vereda(Ubicación_idUbicación, Usuario_idUsuario, vereda_apta, descripcion_vereda, fecha) VALUES (?, ?, ?, ?, curdate())',
+                [Ubicación_idUbicación, Usuario_idUsuario, vereda_apta, descripcion_vereda],
+                (err, result) => {
+                    if (err) {
+                        console.log(err);
+                        return res.status(500).json({ error: "Error al guardar la opinión de vereda pública" });
+                    }
+                    res.json({ message: "Opinión de vereda pública registrada con éxito" });
+                }
+            );
+        }
+    );
+});
+
+
 app.post("/create", (req, res) => {
     const { Email, Contraseña, Usuario } = req.body;
 
