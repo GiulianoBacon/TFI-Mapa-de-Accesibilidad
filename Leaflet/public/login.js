@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.success) {
                 messageDiv.textContent = 'Login exitoso';
+                localStorage.setItem('loggedIn', 'true'); // Persistencia del estado de sesión
                 // Redirigir a la página de inicio
                 window.location.href = '/';
             } else {

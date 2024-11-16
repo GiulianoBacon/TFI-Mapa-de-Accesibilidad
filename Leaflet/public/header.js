@@ -9,6 +9,7 @@ function loadHeader() {
               // Ocultar los enlaces de "Registrarse" y "Iniciar sesión"
               document.getElementById('signup-link').style.display = 'none';
               document.getElementById('login-link').style.display = 'none';
+              
 
               // Mostrar el botón de Cerrar Sesión
               document.getElementById('logout-container').style.display = 'inline';
