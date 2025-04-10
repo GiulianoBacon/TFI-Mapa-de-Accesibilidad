@@ -167,6 +167,31 @@ app.post('/login', (req, res) => {
 // Ruta para obtener todas las opiniones
 app.get("/getOpinions", (req, res) => {
     const query = `
+        SELECT
+            ubicación.latitud,
+            ubicación.longitud
+        FROM 
+            ubicación
+    `;
+
+    db.query(query, (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).json({ error: "Error al obtener las opiniones" });
+        } else {
+            console.log(result);
+            res.json(result);
+        }
+    });
+});
+
+
+// Ruta para obtener todas las opiniones de un lugar
+app.get('/getOpinion', async (req, res) => {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+
+    const query = `
         SELECT 
             opinion_establecimiento.*,
             ubicación.latitud,
@@ -178,7 +203,9 @@ app.get("/getOpinions", (req, res) => {
             ubicación ON opinion_establecimiento.Ubicación_idUbicación = ubicación.idUbicación
         INNER JOIN 
             usuario ON opinion_establecimiento.Usuario_idUsuario = usuario.idUsuario
-    `;
+            WHERE 
+        ubicación.latitud = `+ lat +` AND ubicación.longitud = `+ lng
+    ;
 
     db.query(query, (err, result) => {
         if (err) {

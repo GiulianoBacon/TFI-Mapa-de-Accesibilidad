@@ -13,7 +13,26 @@ html, body {
 	flex-grow: 1;
 	width: 100%;
   }
-  
+
+ .sidebar {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 300px;
+    height: 100%;
+    overflow-y: auto;
+    background-color: var(--primary-color);
+    padding: 15px;
+    z-index: 1000;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    font-size: 14px;
+}
+
+.sidebar b {
+    font-weight: 600;
+}
+
   .header {
 	background-color: #333;
 	color: white;
