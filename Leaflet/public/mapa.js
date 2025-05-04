@@ -60,7 +60,10 @@ function openEstablishmentOpinionModal(latLng) {
     var lat = document.getElementById('latitud');
     long.value = latLng.lng.toFixed(8);
     lat.value = latLng.lat.toFixed(8);
+   
+
 }
+
 
 // Función para obtener la lista de opiniones y marcarlas en el mapa
 async function fetchOpinions() {
@@ -71,67 +74,49 @@ async function fetchOpinions() {
         }
         const opinions = await response.json();
 
-        // Itera sobre cada opinión y la agrega al mapa como un marcador
-        opinions.forEach(opinion => {
-            const marker = L.marker([opinion.latitud, opinion.longitud]).addTo(map);
+          // Agrupar opiniones por latitud y longitud
+          const grouped = {};
+          opinions.forEach(op => {
+              const key = `${op.latitud},${op.longitud}`;
+              if (!grouped[key]) {
+                  grouped[key] = [];
+              }
+              grouped[key].push(op);
+          });
+
+          
+
+        // Iterar por cada grupo (una ubicación)
+        Object.entries(grouped).forEach(([key, group]) => {
+            const [lat, lng] = key.split(',').map(parseFloat);
+
+            // Se usa la primera opinión como base para el popup
+            const primerOpinion = group[0];
+
+            const marker = L.marker([lat, lng]).addTo(map);
+
             marker.bindPopup(`
-                <b>Nombre:</b> ${opinion.nombre_establecimiento}<br>
-                <b>Latitud:</b> ${opinion.latitud}<br>
-                <b>Longitud:</b> ${opinion.longitud}<br>
+                <b>Nombre:</b> ${primerOpinion.nombre_establecimiento}<br>
+                <b>Opiniones registradas:</b> ${group.length}<br>
+                <i>Click para ver más detalles</i>
             `);
 
-            marker.bindTooltip(opinion.nombre_establecimiento, {
-                permanent: false,  // Tooltip solo visible al pasar el mouse
-                direction: 'top',  // Posiciona el tooltip sobre el marcador
-                offset: [0, -10],  // Ajuste del tooltip para que no se superponga con el pin
+            marker.bindTooltip(primerOpinion.nombre_establecimiento, {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -10],
                 opacity: 0.9
             });
-                 marker.on('click', () => {
-                console.log("hello");
-                fetchOpinionLatLng(opinion.latitud,opinion.longitud);
-                
+
+            marker.on('click', () => {
+                fetchOpinionLatLng(lat, lng);
             });
-
-            
-
-           
-
         });
 
-        
     } catch (error) {
         console.error('Hubo un problema al obtener las opiniones:', error);
     }
 }
-
-async function fetchCartelito() {
-    try {
-        const response = await fetch('http://localhost:3001/getOpinion'); // Cambia esta URL según tu ruta
-        if (!response.ok) {
-            throw new Error(`Error al obtener opiniones: ${response.statusText}`);
-        }
-        const opinions = await response.json();
-
-        // Itera sobre cada opinión y la agrega al mapa como un marcador
-        opinions.forEach(opinion => {
-                        
-            marker.bindTooltip(opinion.nombre_establecimiento, {
-                permanent: false,  // Tooltip solo visible al pasar el mouse
-                direction: 'top',  // Posiciona el tooltip sobre el marcador
-                offset: [0, -10],  // Ajuste del tooltip para que no se superponga con el pin
-                opacity: 0.9
-            });
-                 
-
-
-        });
-
-        
-    } catch (error) {
-        console.error('Hubo un problema al obtener las opiniones:', error);
-    }
-}
-
 
 
 async function fetchOpinionLatLng(latitud, longitud) {
@@ -181,6 +166,7 @@ async function fetchOpinionLatLng(latitud, longitud) {
             btnAgregar.onclick = () => {
                 openEstablishmentOpinionModal({ lat: parseFloat(latitud), lng: parseFloat(longitud) });
                 document.getElementById('sidebar').style.display = 'none'; // opcional: cerrar barra
+
             };
 
             sidebar.appendChild(btnAgregar);
