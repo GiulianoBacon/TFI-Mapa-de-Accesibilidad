@@ -118,7 +118,6 @@ async function fetchOpinions() {
             marker.bindPopup(`
                 <b>Nombre:</b> ${primerOpinion.nombre_establecimiento}<br>
                 <b>Opiniones registradas:</b> ${group.length}<br>
-                <i>Click para ver más detalles</i>
             `);
 
             marker.bindTooltip(primerOpinion.nombre_establecimiento, {
@@ -126,6 +125,7 @@ async function fetchOpinions() {
                 direction: 'top',
                 offset: [0, -10],
                 opacity: 0.9
+                
             });
 
             marker.on('click', () => {
