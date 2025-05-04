@@ -79,16 +79,59 @@ async function fetchOpinions() {
                 <b>Longitud:</b> ${opinion.longitud}<br>
             `);
 
-            marker.on('click', () => {
+            marker.bindTooltip(opinion.nombre_establecimiento, {
+                permanent: false,  // Tooltip solo visible al pasar el mouse
+                direction: 'top',  // Posiciona el tooltip sobre el marcador
+                offset: [0, -10],  // Ajuste del tooltip para que no se superponga con el pin
+                opacity: 0.9
+            });
+                 marker.on('click', () => {
                 console.log("hello");
                 fetchOpinionLatLng(opinion.latitud,opinion.longitud);
+                
             });
 
+            
+
+           
+
         });
+
+        
     } catch (error) {
         console.error('Hubo un problema al obtener las opiniones:', error);
     }
 }
+
+async function fetchCartelito() {
+    try {
+        const response = await fetch('http://localhost:3001/getOpinion'); // Cambia esta URL según tu ruta
+        if (!response.ok) {
+            throw new Error(`Error al obtener opiniones: ${response.statusText}`);
+        }
+        const opinions = await response.json();
+
+        // Itera sobre cada opinión y la agrega al mapa como un marcador
+        opinions.forEach(opinion => {
+                        
+            marker.bindTooltip(opinion.nombre_establecimiento, {
+                permanent: false,  // Tooltip solo visible al pasar el mouse
+                direction: 'top',  // Posiciona el tooltip sobre el marcador
+                offset: [0, -10],  // Ajuste del tooltip para que no se superponga con el pin
+                opacity: 0.9
+            });
+                 
+
+
+        });
+
+        
+    } catch (error) {
+        console.error('Hubo un problema al obtener las opiniones:', error);
+    }
+}
+
+
 
 async function fetchOpinionLatLng(latitud, longitud) {
     try {
@@ -114,6 +157,7 @@ async function fetchOpinionLatLng(latitud, longitud) {
             opinions.forEach(opinion => {
                 const opinionHTML = `
                     <div>
+                        <b>Nombre del establecimiento:</b> ${opinion.nombre_establecimiento}<br>
                         <b>Opinión de usuario:</b> ${opinion.nombreUsuario}<br>
                         <b>Espacios aptos:</b> ${opinion.espacios_aptos ? 'Sí' : 'No'}<br>
                         <b>Ascensor apto:</b> ${opinion.ascensor_apto ? 'Sí' : 'No'}<br>
@@ -236,6 +280,7 @@ function addOpinion_establecimiento(event) {
         latitud: formData.get("latitud"),
         longitud: formData.get("longitud"),
         Usuario_idUsuario: 1,
+        nombre_establecimiento: formData.get("nombre_establecimiento"),
         espacios_aptos: formData.has("espacios_aptos"),
         ascensor_apto: formData.has("ascensor_apto"),
         baños_aptos: formData.has("baños_aptos"),
