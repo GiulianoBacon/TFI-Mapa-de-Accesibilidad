@@ -75,6 +75,7 @@ async function fetchOpinions() {
         opinions.forEach(opinion => {
             const marker = L.marker([opinion.latitud, opinion.longitud]).addTo(map);
             marker.bindPopup(`
+                <b>Nombre:</b> ${opinion.nombre_establecimiento}<br>
                 <b>Latitud:</b> ${opinion.latitud}<br>
                 <b>Longitud:</b> ${opinion.longitud}<br>
             `);

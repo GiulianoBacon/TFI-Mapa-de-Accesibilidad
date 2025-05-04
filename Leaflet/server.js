@@ -167,11 +167,16 @@ app.post('/login', (req, res) => {
 // Ruta para obtener todas las opiniones
 app.get("/getOpinions", (req, res) => {
     const query = `
-        SELECT
-            ubicación.latitud,
-            ubicación.longitud
-        FROM 
-            ubicación
+        SELECT 
+    ubicación.latitud,
+    ubicación.longitud,
+    opinion_establecimiento.nombre_establecimiento
+FROM 
+    ubicación
+INNER JOIN 
+    opinion_establecimiento 
+ON 
+    ubicación.idUbicación = opinion_establecimiento.Ubicación_idUbicación;
     `;
 
     db.query(query, (err, result) => {
