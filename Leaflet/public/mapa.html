@@ -1,21 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>Mapa de Accesibilidad Colaborativo</title>
-		<link rel="stylesheet" href="styles.css">
-		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-	</head>
-	<body>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mapa de Accesibilidad Colaborativo</title>
+        <link rel="stylesheet" href="styles.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    </head>
+    <body>
         <div id="header-placeholder"></div>
 
         <div>
            <div class="button-container">
                 <button onClick="handleSearch()" class="btn btn-primary custom-button">Buscar</button>
                 <input id="busqueda" type="text" placeholder="Buscar ubicación..." onInput="handleInputChange()" class="form-control"/>
-            
             </div>
             <ul id="suggestions" class="suggestions-list"></ul>
         </div>
@@ -25,22 +24,25 @@
             <button id="closeSidebar" class="btn btn-sm btn-secondary" style="float: right;">Cerrar</button>
             <div id="sidebar-content"></div>
         </div>
+
         <!-- Modal de selección para Establecimiento o Vereda -->
-<div class="modal" id="modalSelection" role="dialog" style="display: none;">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Selecciona el tipo de opinión</h5>
-                <button type="button" class="close" id="closeModalSelection">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>¿Quieres registrar una opinión de Establecimiento o Vereda?</p>
-                <button id="optionEstablishment" class="btn btn-primary">Establecimiento</button>
-                <button id="optionSidewalk" class="btn btn-secondary">Vereda</button>
+        <div class="modal" id="modalSelection" role="dialog" style="display: none;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Selecciona el tipo de opinión</h5>
+                        <button type="button" class="close" id="closeModalSelection">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>¿Quieres registrar una opinión de Establecimiento o Vereda?</p>
+                        <button id="optionEstablishment" class="btn btn-primary">Establecimiento</button>
+                        <button id="optionSidewalk" class="btn btn-secondary">Vereda</button>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
+
+        <!-- Modal de formulario de Opinión -->
         <div class="modal" id="modalAddOpinion" role="dialog" style="display: none;">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -53,7 +55,7 @@
                                     <div class="col-sm-4">
                                         <input type="text" readonly class="form-control-plaintext" name="latitud" id="latitud" value="latitud">
                                     </div>
-                                    <label for="longitud" class="col-sm-2 col-form-label">longitud:</label>
+                                    <label for="longitud" class="col-sm-2 col-form-label">Longitud:</label>
                                     <div class="col-sm-4">
                                         <input type="text" readonly class="form-control-plaintext" name="longitud" id="longitud" value="longitud">
                                     </div>
@@ -61,7 +63,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Nombre del establecimiento:</label>
-                                <input type="text" name="nombre_establecimiento" class="form-control"/>
+                                <input type="text" name="nombre_establecimiento" id="nombreEstablecimiento" class="form-control" />
                             </div>
 
                             <div class="form-group">
@@ -109,20 +111,19 @@
                                 </div>
                                 <input type="text" name="descripcion_rampa_externa" class="form-control"/>
                             </div>
-                            
+
                             <button type="submit" class="float-right btn btn-success"> Enviar </button>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
-		<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-			integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-			crossorigin=""></script>
-		<script src="mapa.js"></script>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+        <script src="mapa.js"></script>
         <script src="header.js"></script>
         <script>
             loadHeader();
         </script>
-	</body>
+    </body>
 </html>

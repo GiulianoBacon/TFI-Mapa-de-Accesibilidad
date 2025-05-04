@@ -60,9 +60,29 @@ function openEstablishmentOpinionModal(latLng) {
     var lat = document.getElementById('latitud');
     long.value = latLng.lng.toFixed(8);
     lat.value = latLng.lat.toFixed(8);
-   
-
+    
+     // Realizar la consulta al servidor para verificar si existe una opinión con esas coordenadas
+     fetch(`/getOpinion?lat=${latLng.lat.toFixed(8)}&lng=${latLng.lng.toFixed(8)}`)
+     .then(response => response.json())
+     .then(data => {
+         if (data && data.length > 0) {
+             // Si hay una opinión, pre-cargar el nombre del establecimiento y ponerlo en readonly
+             const nombreEstablecimiento = data[0].nombre_establecimiento;
+             const nombreEstablecimientoInput = document.getElementById('nombreEstablecimiento');
+             nombreEstablecimientoInput.value = nombreEstablecimiento;
+             nombreEstablecimientoInput.setAttribute('readonly', true); // Poner como readonly
+         } else {
+             // Si no hay una opinión, dejar el campo vacío para que el usuario lo ingrese
+             const nombreEstablecimientoInput = document.getElementById('nombreEstablecimiento');
+             nombreEstablecimientoInput.value = '';
+             nombreEstablecimientoInput.removeAttribute('readonly'); // Permitir edición
+         }
+     })
+     .catch(error => {
+         console.error('Error al obtener la opinión:', error);
+     });
 }
+   
 
 
 // Función para obtener la lista de opiniones y marcarlas en el mapa
