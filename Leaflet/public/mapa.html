@@ -119,6 +119,40 @@
             </div>
         </div>
 
+        <!-- Modal de formulario de Opinión de Vereda -->
+<div class="modal" id="modalAddOpinionVereda" role="dialog" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <form onSubmit="addOpinion_vereda(event)">
+                    <div class="form-group">
+                        <button id="closeModalAddOpinionVereda" type="button" class="close">&times;</button>
+                        <div class="form-group row">
+                            <label for="latitud_vereda" class="col-sm-2 col-form-label">Latitud:</label>
+                            <div class="col-sm-4">
+                                <input type="text" readonly class="form-control-plaintext" name="latitud_vereda" id="latitud_vereda">
+                            </div>
+                            <label for="longitud_vereda" class="col-sm-2 col-form-label">Longitud:</label>
+                            <div class="col-sm-4">
+                                <input type="text" readonly class="form-control-plaintext" name="longitud_vereda" id="longitud_vereda">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>¿La vereda es apta?</label>
+                        <input type="checkbox" name="vereda_apta" />
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción:</label>
+                        <input type="text" name="descripcion_vereda" class="form-control" />
+                    </div>
+                    <button type="submit" class="float-right btn btn-success">Enviar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
         <script src="mapa.js"></script>
         <script src="header.js"></script>

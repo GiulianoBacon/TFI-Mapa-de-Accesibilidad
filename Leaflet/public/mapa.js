@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         optionSidewalk.onclick = () => {
             console.log("Opción Vereda seleccionada");
             modalSelection.style.display = 'none';
-            alert("Funcionalidad de Opinión de Vereda en desarrollo.");
+            openVeredaOpinionModal(latLng);
         };
     });
 
@@ -83,34 +83,42 @@ function openEstablishmentOpinionModal(latLng) {
      });
 }
    
+function openVeredaOpinionModal(latLng) {
+    const modal = document.getElementById('modalAddOpinionVereda');
+    modal.style.display = 'block';
 
+    document.getElementById('latitud_vereda').value = latLng.lat.toFixed(8);
+    document.getElementById('longitud_vereda').value = latLng.lng.toFixed(8);
+}
+
+// Ícono rojo para vereda (definilo al inicio del archivo, junto con otros íconos)
+const redSidewalkIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/128/6374/6374633.png', // pin amarillo, cambiá si querés
+    iconSize: [30, 30],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    shadowSize: [41, 41],
+    shadowAnchor: [12, 41]
+});
 
 // Función para obtener la lista de opiniones y marcarlas en el mapa
 async function fetchOpinions() {
     try {
-        const response = await fetch('http://localhost:3001/getOpinions'); // Cambia esta URL según tu ruta
-        if (!response.ok) {
-            throw new Error(`Error al obtener opiniones: ${response.statusText}`);
-        }
-        const opinions = await response.json();
+        // Opiniones de establecimiento
+        const resEst = await fetch('http://localhost:3001/getOpinions');
+        if (!resEst.ok) throw new Error("Error al obtener opiniones de establecimientos");
+        const estOpinions = await resEst.json();
 
-          // Agrupar opiniones por latitud y longitud
-          const grouped = {};
-          opinions.forEach(op => {
-              const key = `${op.latitud},${op.longitud}`;
-              if (!grouped[key]) {
-                  grouped[key] = [];
-              }
-              grouped[key].push(op);
-          });
+        const grouped = {};
+        estOpinions.forEach(op => {
+            const key = `${op.latitud},${op.longitud}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(op);
+        });
 
-          
-
-        // Iterar por cada grupo (una ubicación)
         Object.entries(grouped).forEach(([key, group]) => {
             const [lat, lng] = key.split(',').map(parseFloat);
-
-            // Se usa la primera opinión como base para el popup
             const primerOpinion = group[0];
 
             const marker = L.marker([lat, lng]).addTo(map);
@@ -125,7 +133,6 @@ async function fetchOpinions() {
                 direction: 'top',
                 offset: [0, -10],
                 opacity: 0.9
-                
             });
 
             marker.on('click', () => {
@@ -133,10 +140,55 @@ async function fetchOpinions() {
             });
         });
 
+        // Opiniones de vereda
+        const resVer = await fetch('http://localhost:3001/getOpinionsVereda');
+        if (!resVer.ok) throw new Error("Error al obtener opiniones de vereda");
+        const verOpinions = await resVer.json();
+
+        console.log('Opiniones vereda:', verOpinions);
+
+        verOpinions.forEach(op => {
+            console.log(`Latitud: ${op.latitud}, Longitud: ${op.longitud}`);  // <--- Esto te muestra cada coordenada
+        });
+
+        const groupedVer = {};
+        verOpinions.forEach(op => {
+            const key = `${op.latitud},${op.longitud}`;
+            if (!groupedVer[key]) groupedVer[key] = [];
+            groupedVer[key].push(op);
+        });
+
+        Object.entries(groupedVer).forEach(([key, group]) => {
+            const [lat, lng] = key.split(',').map(parseFloat);
+            console.log('Creando marcador vereda en:', lat, lng);
+            const primerOpinion = group[0];
+
+            
+            const marker = L.marker([lat, lng], { icon: redSidewalkIcon }).addTo(map);
+
+            marker.bindPopup(`
+                <b>Opinión sobre vereda pública</b><br>
+                <b>Vereda apta:</b> ${primerOpinion.vereda_apta ? 'Sí' : 'No'}<br>
+                <b>Opiniones registradas:</b> ${group.length}<br>
+            `);
+
+            marker.bindTooltip('Vereda pública', {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -10],
+                opacity: 0.9
+            });
+
+            marker.on('click', () => {
+                fetchOpinionLatLngVereda(lat, lng);
+            });
+        });
+
     } catch (error) {
         console.error('Hubo un problema al obtener las opiniones:', error);
     }
 }
+
 
 
 async function fetchOpinionLatLng(latitud, longitud) {
@@ -194,6 +246,39 @@ async function fetchOpinionLatLng(latitud, longitud) {
 
     } catch (error) {
         console.error('Hubo un problema al obtener las opiniones:', error);
+    }
+}
+
+async function fetchOpinionLatLngVereda(lat, lng) {
+    const response = await fetch(`http://localhost:3001/getOpinionVereda?lat=${lat}&lng=${lng}`);
+    const opinions = await response.json();
+
+    const sidebar = document.getElementById('sidebar-content');
+    document.getElementById('sidebar').style.display = 'block';
+    sidebar.innerHTML = '';
+
+    if (opinions.length === 0) {
+        sidebar.innerHTML = '<p>No hay opiniones de vereda para esta ubicación.</p>';
+    } else {
+        opinions.forEach(opinion => {
+            sidebar.innerHTML += `
+                <div>
+                    <b>Opinión de usuario:</b> ${opinion.nombreUsuario}<br>
+                    <b>¿Vereda apta?:</b> ${opinion.vereda_apta ? 'Sí' : 'No'}<br>
+                    <b>Descripción:</b> ${opinion.descripcion_vereda}<br>
+                    <b>Fecha:</b> ${opinion.fecha}
+                </div>
+                <hr>
+            `;
+        });
+
+        const btnAgregar = document.createElement('button');
+        btnAgregar.innerText = 'Agregar otra opinión de vereda';
+        btnAgregar.onclick = () => {
+            openVeredaOpinionModal({ lat, lng });
+            document.getElementById('sidebar').style.display = 'none';
+        };
+        sidebar.appendChild(btnAgregar);
     }
 }
 
@@ -331,4 +416,47 @@ function addOpinion_establecimiento(event) {
     });
 
     
+}
+
+function addOpinion_vereda(event) {
+    event.preventDefault();
+
+    const loggedIn = localStorage.getItem('loggedIn') === 'true';
+    if (!loggedIn) {
+        alert('Debes iniciar sesión para publicar una opinión');
+        return;
+    }
+
+    const formData = new FormData(event.target);
+    const data = {
+        latitud: formData.get("latitud_vereda"),
+        longitud: formData.get("longitud_vereda"),
+        Usuario_idUsuario: 1,  // Cambiar esto por el ID del usuario real si está implementado
+        vereda_apta: formData.has("vereda_apta") ? 1 : 0,
+        descripcion_vereda: formData.get("descripcion_vereda")
+    };
+
+    fetch("http://localhost:3001/createOpinion_vereda", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Error en la solicitud: " + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        setTimeout(() => {
+            document.getElementById('modalAddOpinionVereda').style.display = 'none';
+        }, 1000);
+        event.target.reset();
+    })
+    .catch(error => {
+        console.error("Hubo un problema con la solicitud:", error);
+    });
 }

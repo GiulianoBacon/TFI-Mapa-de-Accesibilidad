@@ -223,3 +223,58 @@ app.get('/getOpinion', async (req, res) => {
         }
     });
 });
+
+app.get("/getOpinionsVereda", (req, res) => {
+    const query = `
+        SELECT 
+            ubicación.latitud,
+            ubicación.longitud,
+            opinion_vereda.vereda_apta,
+            opinion_vereda.descripcion_vereda,
+            opinion_vereda.fecha,
+            usuario.usuario AS nombreUsuario
+        FROM 
+            ubicación
+        INNER JOIN 
+            opinion_vereda ON ubicación.idUbicación = opinion_vereda.Ubicación_idUbicación
+        INNER JOIN 
+            usuario ON opinion_vereda.Usuario_idUsuario = usuario.idUsuario;
+    `;
+
+    db.query(query, (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: "Error al obtener opiniones de vereda" });
+        }
+        res.json(result);
+    });
+});
+
+app.get("/getOpinionVereda", (req, res) => {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+
+    const query = `
+        SELECT 
+            opinion_vereda.*,
+            ubicación.latitud,
+            ubicación.longitud,
+            usuario.usuario AS nombreUsuario
+        FROM 
+            opinion_vereda
+        INNER JOIN 
+            ubicación ON opinion_vereda.Ubicación_idUbicación = ubicación.idUbicación
+        INNER JOIN 
+            usuario ON opinion_vereda.Usuario_idUsuario = usuario.idUsuario
+        WHERE 
+            ubicación.latitud = ? AND ubicación.longitud = ?;
+    `;
+
+    db.query(query, [lat, lng], (err, result) => {
+        if (err) {
+            console.log(err);
+            return res.status(500).json({ error: "Error al obtener opiniones de vereda" });
+        }
+        res.json(result);
+    });
+});
