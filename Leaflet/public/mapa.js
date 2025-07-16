@@ -47,6 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.style.display = 'none';
     });
 
+    document.getElementById('closeModalAddOpinionVereda').addEventListener('click', function() {
+        document.getElementById('modalAddOpinionVereda').style.display = 'none';
+    });
+
     // Llama a la función para obtener las opiniones cuando se carga la página
     fetchOpinions();
 });
@@ -82,6 +86,8 @@ function openEstablishmentOpinionModal(latLng) {
          console.error('Error al obtener la opinión:', error);
      });
 }
+
+
    
 function openVeredaOpinionModal(latLng) {
     const modal = document.getElementById('modalAddOpinionVereda');
