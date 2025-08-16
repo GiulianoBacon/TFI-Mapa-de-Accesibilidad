@@ -50,28 +50,6 @@ html, body {
 	padding: 0 10px;
   }
   
-  .header-logo {
-	display: flex;
-	align-items: center;
-  }
-  
-  .logo-image {
-	height: 60px; /* Ajusta la altura según sea necesario */
-	margin-right: 30px; /* Espacio entre el logo y el contenido */
-  }
-  
-  .logo-text {
-	font-size: 18px; /* Ajusta el tamaño de fuente según sea necesario */
-	color: white; /* Color del texto */
-	font-weight: bold;
-  }
-  
-  .container-logo {
-	  display: flex;                /* Usamos Flexbox */
-	  align-items: center;          /* Alinea los elementos verticalmente en el centro */
-	  justify-content: flex-start;  /* Alinea los elementos hacia la izquierda */
-  }
-  
   
   .nav ul {
 	list-style: none;
@@ -221,23 +199,32 @@ html, body {
 	  flex-direction: column;
   }
   
-  .container-logo {
-	  display: flex;
-	  align-items: center;
-	  gap: 0.5rem;
-  }
+
+  .container.hero {
+    display: flex;
+    justify-content: center; /* Centra horizontalmente los elementos hijos */
+    align-items: center;     /* Centra verticalmente */
+}
+
   
-  .container-logo i {
-	  font-size: 3rem;
-  }
-  
-  .container-logo h1 a {
-	  text-decoration: none;
-	  color: #000;
-	  font-size: 3rem;
-	  text-transform: uppercase;
-	  letter-spacing: -1px;
-  }
+.container-logo {
+    display: flex;            /* Activar flexbox */
+    flex-direction: column;   /* Ícono arriba, h1 abajo */
+    align-items: center;      /* Centrar horizontalmente */
+    justify-content: center;  /* Centrar verticalmente si hace falta */
+    text-align: center;       /* Centrar el texto dentro del h1 */
+
+}
+
+.container-logo h1 a {
+    text-decoration: none;
+    color: #000;
+    font-size: 3rem;
+    text-transform: uppercase;
+    letter-spacing: -1px;
+    display: inline-block;    /* Asegura que se respete el centrado */
+	font-weight: bold;
+}
   
   .container-user {
 	  display: flex;
@@ -282,6 +269,10 @@ html, body {
   .menu {
 	  display: flex;
 	  gap: 2rem;
+	  height: 16px;
+	  bottom: -3px;
+	  position: relative;
+	  
   }
   
   .menu li {
@@ -1270,11 +1261,7 @@ html, body {
 	  color: #fff;
   }
   
-  #logout-container {
-	  margin-left: auto; /* Si quieres que se alinee a la derecha */
-	  margin-right: 1rem; /* Ajusta el espacio a la derecha */
-	}
-  
+
 	/* Estilos generales para la modal */
   .modal {
 	  display: none; /* Solo se muestra cuando es activada */

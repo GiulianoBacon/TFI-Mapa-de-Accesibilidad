@@ -99,8 +99,8 @@ function openVeredaOpinionModal(latLng) {
 
 // Ícono rojo para vereda (definilo al inicio del archivo, junto con otros íconos)
 const redSidewalkIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/128/6374/6374633.png', // pin amarillo, cambiá si querés
-    iconSize: [30, 30],
+    iconUrl: 'https://cdn.pixabay.com/photo/2015/12/14/20/29/tracker-1093167_1280.png', // pin amarillo, cambiá si querés
+    iconSize: [18, 30],
     iconAnchor: [12, 41],
     popupAnchor: [1, -34],
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
@@ -233,7 +233,8 @@ async function fetchOpinionLatLng(latitud, longitud) {
                         <b>Descripción del ascensor:</b> ${opinion.descripcion_ascensor || 'No disponible'}<br>
                         <b>Descripción de la rampa interna:</b> ${opinion.descripcion_rampa_interna || 'No disponible'}<br>
                         <b>Descripción de la rampa externa:</b> ${opinion.descripcion_rampa_externa || 'No disponible'}<br>
-                        <b>Fecha:</b> ${opinion.fecha}
+                        <b>Fecha:</b> ${opinion.fecha}<br>
+                        <b>Puntaje:</b> ${opinion.puntaje || 'No evaluado'}<br>  <!-- <--- Agregado -->
                     </div>
                     <hr>
                 `;
@@ -258,11 +259,9 @@ async function fetchOpinionLatLng(latitud, longitud) {
 async function fetchOpinionLatLngVereda(lat, lng) {
     const response = await fetch(`http://localhost:3001/getOpinionVereda?lat=${lat}&lng=${lng}`);
     const opinions = await response.json();
-
     const sidebar = document.getElementById('sidebar-content');
     document.getElementById('sidebar').style.display = 'block';
     sidebar.innerHTML = '';
-
     if (opinions.length === 0) {
         sidebar.innerHTML = '<p>No hay opiniones de vereda para esta ubicación.</p>';
     } else {
@@ -277,10 +276,10 @@ async function fetchOpinionLatLngVereda(lat, lng) {
                 <hr>
             `;
         });
-
         const btnAgregar = document.createElement('button');
         btnAgregar.innerText = 'Agregar otra opinión de vereda';
         btnAgregar.onclick = () => {
+            // Pasamos las coordenadas a la función openVeredaOpinionModal
             openVeredaOpinionModal({ lat, lng });
             document.getElementById('sidebar').style.display = 'none';
         };
@@ -388,7 +387,9 @@ function addOpinion_establecimiento(event) {
         descripcion_rampa_interna: formData.get("descripcion_rampa_interna"),
         descripcion_ascensor: formData.get("descripcion_ascensor"),
         descripcion_rampa_externa: formData.get("descripcion_rampa_externa"),
-        descripcion_espacios: formData.get("descripcion_espacios")
+        descripcion_espacios: formData.get("descripcion_espacios"),
+        puntaje: parseInt(formData.get("puntaje"))
+
     };
 
     fetch("http://localhost:3001/createOpinion_establecimiento", {
@@ -409,6 +410,7 @@ function addOpinion_establecimiento(event) {
         console.log(data);
         alert(data.message);
          // Cierra el popup automáticamente después de que se haya mostrado el mensaje
+    fetchOpinions();
     setTimeout(() => {
         var modal = document.getElementById('modalAddOpinion');
         modal.style.display = 'none'; // Cierra el popup
@@ -424,45 +426,60 @@ function addOpinion_establecimiento(event) {
     
 }
 
-function addOpinion_vereda(event) {
+async function addOpinion_vereda(event) {
     event.preventDefault();
-
     const loggedIn = localStorage.getItem('loggedIn') === 'true';
     if (!loggedIn) {
         alert('Debes iniciar sesión para publicar una opinión');
         return;
     }
-
     const formData = new FormData(event.target);
-    const data = {
-        latitud: formData.get("latitud_vereda"),
-        longitud: formData.get("longitud_vereda"),
-        Usuario_idUsuario: 1,  // Cambiar esto por el ID del usuario real si está implementado
-        vereda_apta: formData.has("vereda_apta") ? 1 : 0,
-        descripcion_vereda: formData.get("descripcion_vereda")
-    };
+    const latitud = formData.get("latitud_vereda");
+    const longitud = formData.get("longitud_vereda");
+    
+    // Paso 1: Usar geocodificación inversa para obtener la dirección de las coordenadas.
+    try {
+        const responseGeocode = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitud}&lon=${longitud}`);
+        const dataGeocode = await responseGeocode.json();
+        
+        let direccion = 'Ubicación no disponible';
+        if (dataGeocode.address) {
+            // Construir una dirección legible. Puedes ajustarlo según los datos disponibles.
+            direccion = dataGeocode.address.road || dataGeocode.display_name;
+        }
 
-    fetch("http://localhost:3001/createOpinion_vereda", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
+        const data = {
+            latitud: latitud,
+            longitud: longitud,
+            // Guardamos la dirección de la calle en la base de datos
+            direccion_vereda: direccion, 
+            Usuario_idUsuario: 1, 
+            vereda_apta: formData.has("vereda_apta") ? 1 : 0,
+            descripcion_vereda: formData.get("descripcion_vereda")
+        };
+        
+        // Paso 2: Enviar la opinión a tu servidor
+        const response = await fetch("http://localhost:3001/createOpinion_vereda", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        });
+        
         if (!response.ok) {
             throw new Error("Error en la solicitud: " + response.statusText);
         }
-        return response.json();
-    })
-    .then(data => {
-        alert(data.message);
+        
+        const result = await response.json();
+        alert(result.message);
+        fetchOpinions();
         setTimeout(() => {
             document.getElementById('modalAddOpinionVereda').style.display = 'none';
         }, 1000);
         event.target.reset();
-    })
-    .catch(error => {
+        
+    } catch (error) {
         console.error("Hubo un problema con la solicitud:", error);
-    });
+    }
 }

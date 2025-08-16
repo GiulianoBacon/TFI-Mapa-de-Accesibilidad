@@ -41,7 +41,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Rutas
 app.post("/createOpinion_establecimiento", (req, res) => {
-    const { latitud, longitud, Usuario_idUsuario, nombre_establecimiento, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios } = req.body;
+    const { latitud, longitud, Usuario_idUsuario, nombre_establecimiento, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, puntaje } = req.body;
     console.log("guardando opinion");
     db.query(
         'INSERT INTO ubicación(latitud, longitud, direccion) VALUES (?, ?, ?);', 
@@ -55,14 +55,30 @@ app.post("/createOpinion_establecimiento", (req, res) => {
             db.query(
                 'INSERT INTO opinion_establecimiento(Ubicación_idUbicación, Usuario_idUsuario, nombre_establecimiento, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, fecha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, curdate())', 
                                                     [Ubicación_idUbicación, Usuario_idUsuario,  nombre_establecimiento, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios], 
+            
                 (err, result) => {
                     if (err) {
                         console.log(err);
                         return res.status(500).json({ error: "Error al guardar la opinión" }); // Enviar error al cliente
                     }
+
+                    db.query(
+                        'INSERT INTO puntaje_establecimiento (Usuario_idUsuario, Opinion_establecimiento_idOpinion, puntaje) VALUES (?, ?, ?);',
+                        [Usuario_idUsuario, result.insertId, puntaje],
+                        (err2, result2) => {
+                            if (err2) {
+                                console.log(err2);
+                                // No detenemos la respuesta principal, solo logueamos el error
+                            } else {
+                                console.log("Puntaje registrado correctamente.");
+                            }
+                        }
+                    );
                     res.json({ message: "Opinión de establecimiento registrada con éxito" }); // Responder con un mensaje JSON
                 }
             );
+
+            
         }
     );
     
@@ -197,20 +213,25 @@ app.get('/getOpinion', async (req, res) => {
     const lng = parseFloat(req.query.lng);
 
     const query = `
-        SELECT 
-            nombre_establecimiento,
-            opinion_establecimiento.*,
-            ubicación.latitud,
-            ubicación.longitud,
-            usuario.usuario AS nombreUsuario
-        FROM 
-            opinion_establecimiento
-        INNER JOIN 
-            ubicación ON opinion_establecimiento.Ubicación_idUbicación = ubicación.idUbicación
-        INNER JOIN 
-            usuario ON opinion_establecimiento.Usuario_idUsuario = usuario.idUsuario
-            WHERE 
-        ubicación.latitud = `+ lat +` AND ubicación.longitud = `+ lng
+    SELECT 
+        nombre_establecimiento,
+        opinion_establecimiento.*,
+        ubicación.latitud,
+        ubicación.longitud,
+        usuario.usuario AS nombreUsuario,
+        puntaje_establecimiento.puntaje   -- <-- NUEVO: agregar puntaje
+    FROM 
+        opinion_establecimiento
+    INNER JOIN 
+        ubicación ON opinion_establecimiento.Ubicación_idUbicación = ubicación.idUbicación
+    INNER JOIN 
+        usuario ON opinion_establecimiento.Usuario_idUsuario = usuario.idUsuario
+    LEFT JOIN
+        puntaje_establecimiento ON puntaje_establecimiento.Opinion_establecimiento_idOpinion = opinion_establecimiento.idOpinion
+        AND puntaje_establecimiento.Usuario_idUsuario = opinion_establecimiento.Usuario_idUsuario
+    WHERE 
+        ubicación.latitud = ` + lat + ` AND ubicación.longitud = ` + lng
+
     ;
 
     db.query(query, (err, result) => {
