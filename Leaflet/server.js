@@ -254,6 +254,7 @@ app.get("/getOpinionsVereda", (req, res) => {
         SELECT 
             ubicación.latitud,
             ubicación.longitud,
+            ubicación.direccion,  -- <-- AGREGAR ESTA LÍNEA
             opinion_vereda.vereda_apta,
             opinion_vereda.descripcion_vereda,
             opinion_vereda.fecha,

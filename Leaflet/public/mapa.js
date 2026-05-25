@@ -172,18 +172,21 @@ async function fetchOpinions() {
             
             const marker = L.marker([lat, lng], { icon: redSidewalkIcon }).addTo(map);
 
-            marker.bindPopup(`
-                <b>Opinión sobre vereda pública</b><br>
-                <b>Vereda apta:</b> ${primerOpinion.vereda_apta ? 'Sí' : 'No'}<br>
-                <b>Opiniones registradas:</b> ${group.length}<br>
-            `);
+// CAMBIA ESTO:
+marker.bindPopup(`
+    <b>Opinión sobre vereda pública</b><br>
+    <b>Dirección:</b> ${primerOpinion.direccion || 'No disponible'}<br>
+    <b>Vereda apta:</b> ${primerOpinion.vereda_apta ? 'Sí' : 'No'}<br>
+    <b>Opiniones registradas:</b> ${group.length}<br>
+`);
 
-            marker.bindTooltip('Vereda pública', {
-                permanent: false,
-                direction: 'top',
-                offset: [0, -10],
-                opacity: 0.9
-            });
+// PARA QUE EL TOOLTIP MUESTRE LA DIRECCIÓN:
+marker.bindTooltip(primerOpinion.direccion || 'Vereda pública', {
+    permanent: false,
+    direction: 'top',
+    offset: [0, -10],
+    opacity: 0.9
+});
 
             marker.on('click', () => {
                 fetchOpinionLatLngVereda(lat, lng);
