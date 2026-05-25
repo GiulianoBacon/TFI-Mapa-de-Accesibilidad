@@ -86,20 +86,20 @@ app.post("/createOpinion_establecimiento", (req, res) => {
 
 // Ruta para crear una opinión sobre vereda pública
 app.post("/createOpinion_vereda", (req, res) => {
-    const { latitud, longitud, Usuario_idUsuario, vereda_apta, descripcion_vereda } = req.body;
+    // Recibimos 'direccion' directamente
+    const { latitud, longitud, Usuario_idUsuario, vereda_apta, descripcion_vereda, direccion } = req.body;
     console.log("Guardando opinión de vereda pública");
 
-    // Guardamos la ubicación en la tabla 'ubicación'
+    // Guardamos la ubicación en la tabla 'ubicación' con la dirección automática
     db.query(
         'INSERT INTO ubicación(latitud, longitud, direccion) VALUES (?, ?, ?);', 
-        [latitud, longitud, "placeholder"], 
+        [latitud, longitud, direccion], 
         (err, result) => {
             if (err) {
                 console.log(err);
                 return res.status(500).json({ error: "Error al guardar la ubicación de la opinión de vereda" });
             }
             
-            // Obtenemos el id de la ubicación que se acaba de insertar
             const Ubicación_idUbicación = result.insertId;
 
             // Insertamos la opinión de la vereda pública en la tabla 'Opinion_vereda'
@@ -122,21 +122,25 @@ app.post("/createOpinion_vereda", (req, res) => {
 app.post("/create", (req, res) => {
     const { Email, Contraseña, Usuario } = req.body;
 
-    bcrypt.hash(Contraseña, 10, (err, hash) => {  // El número 10 es el "salt rounds", ajustable para seguridad/performance
+    bcrypt.hash(Contraseña, 10, (err, hash) => {
         if (err) {
             console.log(err);
-            return res.status(500).json({ error: "Error al generar el hash de la contraseña" });
+            return res.status(500).json({ success: false, error: "Error al generar el hash de la contraseña" });
         }
 
-        // Almacenar el hash en lugar de la contraseña original
         db.query('INSERT INTO usuario(email, contraseña, usuario) VALUES (?, ?, ?)', 
         [Email, hash, Usuario],
         (err, result) => {
             if (err) {
                 console.log(err);
-                return res.status(500).json({ error: "Error al registrar el usuario" });
+                return res.status(500).json({ success: false, error: "Error al registrar el usuario" });
             } else {
-                res.send("Usuario registrado con éxito");
+                // AUTO-LOGIN: Creamos la sesión usando el ID del nuevo usuario insertado
+                req.session.authenticated = true;
+                req.session.idUsuario = result.insertId; 
+                
+                // Respondemos con un JSON confirmando el éxito
+                res.json({ success: true, message: "Usuario registrado y logueado con éxito" });
             }
         });
     });

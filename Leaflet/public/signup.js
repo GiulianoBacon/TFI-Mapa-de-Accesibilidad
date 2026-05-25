@@ -32,11 +32,18 @@ async function handleRegistrar() {
       })
     });
 
-    if (response.ok) {
-      alert("Usuario registrado");
-      getUsuarios();
+    // Parseamos la respuesta como JSON
+    const data = await response.json();
+
+    if (data.success) {
+      // Si el registro y auto-login fueron exitosos
+      localStorage.setItem('loggedIn', 'true'); // Mantenemos la lógica de persistencia que ya usás
+      
+      // Redirigimos al usuario a la página de inicio
+      window.location.href = '/'; 
     } else {
-      alert("Error al registrar el usuario.");
+      // Mostramos el mensaje de error que viene del backend
+      alert(data.error || "Error al registrar el usuario.");
     }
   } catch (error) {
     alert("Ocurrió un error: " + error.message);

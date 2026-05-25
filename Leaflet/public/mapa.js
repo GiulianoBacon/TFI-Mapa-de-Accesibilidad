@@ -426,6 +426,38 @@ function addOpinion_establecimiento(event) {
     
 }
 
+// Cuando se abre el modal, buscamos la dirección y la escribimos en los inputs
+async function openVeredaOpinionModal(latLng) {
+    const modal = document.getElementById('modalAddOpinionVereda');
+    modal.style.display = 'block';
+
+    document.getElementById('latitud_vereda').value = latLng.lat.toFixed(8);
+    document.getElementById('longitud_vereda').value = latLng.lng.toFixed(8);
+    
+    // Ponemos "Buscando..." mientras Nominatim hace su trabajo
+    const inputDireccion = document.getElementById('direccion_vereda');
+    const inputAltura = document.getElementById('altura_vereda');
+    inputDireccion.value = "Buscando calle...";
+    inputAltura.value = "";
+
+    try {
+        const responseGeocode = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latLng.lat}&lon=${latLng.lng}`);
+        const dataGeocode = await responseGeocode.json();
+        
+        if (dataGeocode.address) {
+            // Autocompletamos con los datos (calle y altura)
+            inputDireccion.value = dataGeocode.address.road || dataGeocode.address.pedestrian || dataGeocode.display_name.split(',')[0] || "";
+            inputAltura.value = dataGeocode.address.house_number || "";
+        } else {
+            inputDireccion.value = "";
+        }
+    } catch (error) {
+        console.error("Error obteniendo dirección:", error);
+        inputDireccion.value = "";
+    }
+}
+
+// Al hacer clic en Enviar, tomamos lo que haya en los inputs (autocompletado o corregido a mano)
 async function addOpinion_vereda(event) {
     event.preventDefault();
     const loggedIn = localStorage.getItem('loggedIn') === 'true';
@@ -433,32 +465,22 @@ async function addOpinion_vereda(event) {
         alert('Debes iniciar sesión para publicar una opinión');
         return;
     }
-    const formData = new FormData(event.target);
-    const latitud = formData.get("latitud_vereda");
-    const longitud = formData.get("longitud_vereda");
-    
-    // Paso 1: Usar geocodificación inversa para obtener la dirección de las coordenadas.
-    try {
-        const responseGeocode = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitud}&lon=${longitud}`);
-        const dataGeocode = await responseGeocode.json();
-        
-        let direccion = 'Ubicación no disponible';
-        if (dataGeocode.address) {
-            // Construir una dirección legible. Puedes ajustarlo según los datos disponibles.
-            direccion = dataGeocode.address.road || dataGeocode.display_name;
-        }
 
-        const data = {
-            latitud: latitud,
-            longitud: longitud,
-            // Guardamos la dirección de la calle en la base de datos
-            direccion_vereda: direccion, 
-            Usuario_idUsuario: 1, 
-            vereda_apta: formData.has("vereda_apta") ? 1 : 0,
-            descripcion_vereda: formData.get("descripcion_vereda")
-        };
-        
-        // Paso 2: Enviar la opinión a tu servidor
+    const formData = new FormData(event.target);
+    
+    // Concatenamos lo que haya en los inputs de dirección y altura
+    const direccionCompleta = `${formData.get("direccion_vereda")} ${formData.get("altura_vereda")}`.trim();
+    
+    const data = {
+        latitud: formData.get("latitud_vereda"),
+        longitud: formData.get("longitud_vereda"),
+        direccion: direccionCompleta, // Acá mandamos el texto listo al backend
+        Usuario_idUsuario: 1, 
+        vereda_apta: formData.has("vereda_apta") ? 1 : 0,
+        descripcion_vereda: formData.get("descripcion_vereda")
+    };
+    
+    try {
         const response = await fetch("http://localhost:3001/createOpinion_vereda", {
             method: "POST",
             headers: {
