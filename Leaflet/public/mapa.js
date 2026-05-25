@@ -55,36 +55,43 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchOpinions();
 });
 
-function openEstablishmentOpinionModal(latLng) {
-    console.log(latLng);
+async function openEstablishmentOpinionModal(latLng) {
+    console.log("Coordenadas:", latLng);
     const modal = document.getElementById('modalAddOpinion');
     modal.style.display = 'block';
     
-    var long = document.getElementById('longitud');
-    var lat = document.getElementById('latitud');
-    long.value = latLng.lng.toFixed(8);
-    lat.value = latLng.lat.toFixed(8);
+    // Asignar coordenadas a los inputs ocultos
+    document.getElementById('longitud').value = latLng.lng.toFixed(8);
+    document.getElementById('latitud').value = latLng.lat.toFixed(8);
     
-     // Realizar la consulta al servidor para verificar si existe una opinión con esas coordenadas
-     fetch(`/getOpinion?lat=${latLng.lat.toFixed(8)}&lng=${latLng.lng.toFixed(8)}`)
-     .then(response => response.json())
-     .then(data => {
-         if (data && data.length > 0) {
-             // Si hay una opinión, pre-cargar el nombre del establecimiento y ponerlo en readonly
-             const nombreEstablecimiento = data[0].nombre_establecimiento;
-             const nombreEstablecimientoInput = document.getElementById('nombreEstablecimiento');
-             nombreEstablecimientoInput.value = nombreEstablecimiento;
-             nombreEstablecimientoInput.setAttribute('readonly', true); // Poner como readonly
-         } else {
-             // Si no hay una opinión, dejar el campo vacío para que el usuario lo ingrese
-             const nombreEstablecimientoInput = document.getElementById('nombreEstablecimiento');
-             nombreEstablecimientoInput.value = '';
-             nombreEstablecimientoInput.removeAttribute('readonly'); // Permitir edición
-         }
-     })
-     .catch(error => {
-         console.error('Error al obtener la opinión:', error);
-     });
+    const nombreEstablecimientoInput = document.getElementById('nombreEstablecimiento');
+    nombreEstablecimientoInput.value = "Buscando...";
+    nombreEstablecimientoInput.removeAttribute('readonly');
+
+    try {
+        // 1. Primero, intentamos obtener el nombre del lugar de OSM (Nominatim)
+        const resGeo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latLng.lat}&lon=${latLng.lng}&namedetails=1`);
+        const dataGeo = await resGeo.json();
+        
+        if (dataGeo.namedetails && dataGeo.namedetails.name) {
+            nombreEstablecimientoInput.value = dataGeo.namedetails.name;
+        } else {
+            nombreEstablecimientoInput.value = "";
+        }
+
+        // 2. Luego, verificamos si YA existen opiniones en la BD para este punto
+        const resOpinions = await fetch(`/getOpinion?lat=${latLng.lat.toFixed(8)}&lng=${latLng.lng.toFixed(8)}`);
+        const dataOpinions = await resOpinions.json();
+
+        if (dataOpinions && dataOpinions.length > 0) {
+            // Si hay opiniones, prevalece el nombre que ya está en la base de datos
+            nombreEstablecimientoInput.value = dataOpinions[0].nombre_establecimiento;
+            nombreEstablecimientoInput.setAttribute('readonly', true);
+        }
+    } catch (error) {
+        console.error("Error al inicializar el modal:", error);
+        nombreEstablecimientoInput.value = "";
+    }
 }
 
 
