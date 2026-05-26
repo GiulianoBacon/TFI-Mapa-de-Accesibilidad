@@ -41,47 +41,238 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Rutas
 app.post("/createOpinion_establecimiento", (req, res) => {
-    const { latitud, longitud, Usuario_idUsuario, nombre_establecimiento, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, puntaje } = req.body;
-    console.log("guardando opinion");
-    db.query(
-        'INSERT INTO ubicación(latitud, longitud, direccion) VALUES (?, ?, ?);', 
-                                            [latitud, longitud, "placeholder"], 
-        (err, result) => {
-            if (err) {
-                console.log(err);
-                return res.status(500).json({ error: "Error al guardar la ubicacion de la opinión" }); // Enviar error al cliente
-            }
-            const Ubicación_idUbicación = result.insertId;
-            db.query(
-                'INSERT INTO opinion_establecimiento(Ubicación_idUbicación, Usuario_idUsuario, nombre_establecimiento, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, fecha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, curdate())', 
-                                                    [Ubicación_idUbicación, Usuario_idUsuario,  nombre_establecimiento, espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios], 
-            
-                (err, result) => {
-                    if (err) {
-                        console.log(err);
-                        return res.status(500).json({ error: "Error al guardar la opinión" }); // Enviar error al cliente
-                    }
 
-                    db.query(
-                        'INSERT INTO puntaje_establecimiento (Usuario_idUsuario, Opinion_establecimiento_idOpinion, puntaje) VALUES (?, ?, ?);',
-                        [Usuario_idUsuario, result.insertId, puntaje],
-                        (err2, result2) => {
-                            if (err2) {
-                                console.log(err2);
-                                // No detenemos la respuesta principal, solo logueamos el error
-                            } else {
-                                console.log("Puntaje registrado correctamente.");
-                            }
-                        }
-                    );
-                    res.json({ message: "Opinión de establecimiento registrada con éxito" }); // Responder con un mensaje JSON
-                }
-            );
+const {
+latitud,
+longitud,
+Usuario_idUsuario,
+nombre_establecimiento,
+espacios_aptos,
+ascensor_apto,
+baños_aptos,
+puerta_apta,
+rampa_interna_apta,
+rampa_externa_apta,
+descripcion_rampa_interna,
+descripcion_ascensor,
+descripcion_rampa_externa,
+descripcion_espacios,
+puntaje
 
-            
-        }
-    );
-    
+} = req.body;
+
+const radio = 0.0002; // ~20 metros
+
+const buscarUbicacion = `
+
+SELECT
+ubicación.idUbicación
+
+FROM ubicación
+
+INNER JOIN opinion_establecimiento
+ON ubicación.idUbicación =
+opinion_establecimiento.Ubicación_idUbicación
+
+WHERE
+
+LOWER(opinion_establecimiento.nombre_establecimiento)=LOWER(?)
+
+AND ABS(ubicación.latitud - ?) < ?
+
+AND ABS(ubicación.longitud - ?) < ?
+
+LIMIT 1
+
+`;
+
+db.query(
+
+buscarUbicacion,
+
+[
+nombre_establecimiento,
+latitud,
+radio,
+longitud,
+radio
+],
+
+(err, existentes)=>{
+
+if(err){
+
+console.log(err);
+
+return res.status(500).json(err);
+
+}
+
+const guardarOpinion=(idUbicacion)=>{
+
+db.query(
+
+`
+
+INSERT INTO opinion_establecimiento(
+
+Ubicación_idUbicación,
+Usuario_idUsuario,
+nombre_establecimiento,
+espacios_aptos,
+ascensor_apto,
+baños_aptos,
+puerta_apta,
+rampa_interna_apta,
+rampa_externa_apta,
+descripcion_rampa_interna,
+descripcion_ascensor,
+descripcion_rampa_externa,
+descripcion_espacios,
+fecha
+
+)
+
+VALUES(
+?,?,?,?,?,?,?,?,?,?,?,?,?,
+CURDATE()
+)
+
+`,
+
+[
+idUbicacion,
+Usuario_idUsuario,
+nombre_establecimiento,
+espacios_aptos,
+ascensor_apto,
+baños_aptos,
+puerta_apta,
+rampa_interna_apta,
+rampa_externa_apta,
+descripcion_rampa_interna,
+descripcion_ascensor,
+descripcion_rampa_externa,
+descripcion_espacios
+],
+
+(err,result)=>{
+
+if(err){
+
+console.log(err);
+
+return res.status(500).json(err);
+
+}
+
+// NUEVO: guardar puntaje
+const idOpinion = result.insertId;
+
+db.query(
+
+`
+
+INSERT INTO puntaje_establecimiento(
+
+Usuario_idUsuario,
+Opinion_establecimiento_idOpinion,
+puntaje
+
+)
+
+VALUES(?,?,?)
+
+`,
+
+[
+Usuario_idUsuario,
+idOpinion,
+puntaje
+],
+
+(err)=>{
+
+if(err){
+
+console.log(err);
+
+return res.status(500).json(err);
+
+}
+
+res.json({
+message:
+"Opinión registrada"
+});
+
+}
+
+);
+
+}
+
+);
+
+};
+
+if(existentes.length>0){
+
+guardarOpinion(
+existentes[0].idUbicación
+);
+
+}
+
+else{
+
+db.query(
+
+`
+INSERT INTO ubicación(
+latitud,
+longitud,
+direccion
+)
+
+VALUES(
+?,
+?,
+?
+)
+
+`,
+
+[
+latitud,
+longitud,
+"placeholder"
+],
+
+(err,result)=>{
+
+if(err){
+
+console.log(err);
+
+return res.status(500).json(err);
+
+}
+
+guardarOpinion(
+result.insertId
+);
+
+}
+
+);
+
+}
+
+}
+
+);
+
 });
 
 // Ruta para crear una opinión sobre vereda pública

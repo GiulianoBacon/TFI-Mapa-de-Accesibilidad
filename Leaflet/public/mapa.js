@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalSelection = document.getElementById('modalSelection');
     const optionEstablishment = document.getElementById('optionEstablishment');
     const optionSidewalk = document.getElementById('optionSidewalk');
+    
 
     document.getElementById('closeSidebar').addEventListener('click', () => {
         document.getElementById('sidebar').style.display = 'none';
