@@ -12,7 +12,22 @@ html, body {
   .map {
 	flex-grow: 1;
 	width: 100%;
+	position: relative;
   }
+
+	.layer-toggles {
+    position: absolute;
+    bottom: 5%;
+    right: 5%;
+    z-index: 1000;
+    background: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+		font-size: 1.5rem;
+	}
 
  .sidebar {
     display: none;
@@ -79,14 +94,13 @@ html, body {
 	max-height: 200px;
 	overflow-y: auto;
 	list-style-type: none;
-	padding: 0;
-	margin: 0;
-	width: 100%;
+	margin-left: 50px;
+	width: calc(100% - 50px);
 	z-index: 1000;
   }
   
   .suggestions-list li {
-	padding: 8px;
+	padding: 3px 8px;
 	cursor: pointer;
   }
   
@@ -96,14 +110,13 @@ html, body {
   
   .button-container {
 	display: flex;
-	justify-content: center; /* Centra horizontalmente */
-	margin-top: 10px; /* Ajusta el margen según sea necesario */
-	margin-bottom: 10px;
+	justify-content: center;
+	margin-top: 2px;
+	margin-bottom: 2px;
   }
   
   .custom-button {
-	font-size: 1.25rem; /* Aumenta el tamaño del texto del botón */
-	padding: 0.75rem 1.5rem; /* Ajusta el relleno del botón para hacerlo más grande */
+	font-size: clamp(1.4rem, 1.4vw, 1.5rem) !important;
   }
   
   .home-container {
@@ -253,6 +266,7 @@ html, body {
   /* ***** NAVBAR ***** */
   .container-navbar {
 	  background-color: var(--primary-color);
+	  position: relative;
   }
   
   .navbar {
@@ -262,8 +276,10 @@ html, body {
 	  padding: 1rem 0;
   }
   
-  .navbar .fa-bars {
+  .navbar .fa-bars,
+  .navbar .fa-xmark {
 	  display: none;
+	  cursor: pointer;
   }
   
   .menu {
@@ -357,14 +373,20 @@ html, body {
 	  background-image: linear-gradient(100deg, #000000, #00000020),
 		  url('img/banner.jpg');
 	  height: 60rem;
+		flex-grow: 1;
 	  background-size: cover;
 	  background-position: center;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 4rem;
+		text-align: justify;
   }
   
   .content-banner {
 	  max-width: 90rem;
 	  margin: 0 auto;
-	  padding: 20rem 0;
+	  padding: 3rem 0;
   }
   
   .content-banner p {
@@ -392,6 +414,38 @@ html, body {
 	  text-transform: uppercase;
 	  border-radius: 3rem;
   }
+
+	.form-banner-wrapper {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+		padding: 3rem 1.5rem;
+	}
+
+	.form-banner-card {
+		font-size: clamp(1.2rem, 1.5vw, 1.6rem);
+	}
+
+	.form-banner-card .input-group-text {
+		font-size: clamp(1.1rem, 1.4vw, 1.5rem);
+		white-space: nowrap;
+	}
+
+	.form-banner-card .form-control, #busqueda{
+		font-size: clamp(1.4rem, 1.4vw, 1.5rem) !important;
+	}
+
+	.form-banner-card .btn {
+		font-size: clamp(1.2rem, 1.5vw, 1.6rem);
+		padding: clamp(0.6rem, 1vw, 1rem) clamp(1.5rem, 3vw, 3rem);
+	}
+
+	.form-banner-card .card-header {
+		font-size: clamp(1.4rem, 2vw, 2rem);
+		font-weight: 600;
+		padding: clamp(0.8rem, 1.5vw, 1.5rem);
+	}
   
   /* ************ */
   /*            MAIN CONTENT            */
@@ -861,18 +915,20 @@ html, body {
   .container-footer {
 	  display: flex;
 	  flex-direction: column;
-	  gap: 4rem;
+		gap: 1rem;
 	  padding: 3rem;
+		padding-bottom: 1rem;
   }
   
   .menu-footer {
 	  display: grid;
-	  grid-template-columns: repeat(3, 1fr) 30rem;
+	  grid-template-columns: repeat(3, 1fr);
+		text-align: center;
 	  gap: 3rem;
 	  justify-items: center;
 	  justify-content: center; /* Agregar esto */
   }
-  
+
   .title-footer {
 	  font-weight: 600;
 	  font-size: 1.6rem;
@@ -885,7 +941,7 @@ html, body {
   .newsletter {
 	  display: flex;
 	  flex-direction: column;
-	  gap: 2rem;
+	  gap: 1rem;
   }
   
   .contact-info ul,
@@ -1043,16 +1099,32 @@ html, body {
   
 	  .navbar {
 		  padding: 1rem 2rem;
+		  flex-wrap: wrap;
 	  }
-  
-	  .navbar .fa-bars {
+
+	  .navbar .fa-bars,
+	  .navbar .fa-xmark {
 		  display: block;
 		  color: #fff;
-		  font-size: 3rem;
+		  font-size: 2rem;
 	  }
-  
+
 	  .menu {
 		  display: none;
+		  flex-direction: column;
+		  width: 100%;
+		  gap: 1.5rem;
+		  height: auto !important;
+		  padding: 1rem 0 0.5rem 0;
+	  }
+
+	  .menu.menu-open {
+		  display: flex;
+	  }
+
+	  .menu li,
+	  .menu a {
+		  width: 100%;
 	  }
   
 	  .content-banner {
@@ -1108,12 +1180,7 @@ html, body {
 	  .container-blogs {
 		  overflow: hidden;
 		  grid-template-columns: 1fr 1fr;
-  
 		  height: 52rem;
-	  }
-  
-	  .menu-footer {
-		  grid-template-columns: repeat(2, 1fr);
 	  }
   
 	  .copyright {
@@ -1129,7 +1196,7 @@ html, body {
   /* ************ */
   @media (max-width: 468px) {
 	  html {
-		  font-size: 42.5%;
+		  font-size: 55%;
 	  }
   
 	  .content-banner {
@@ -1206,12 +1273,6 @@ html, body {
   
 	  .btn-read-more{
 		  font-size: 1.8rem;
-	  }
-  
-	  .contact-info ul,
-	  .information ul,
-	  .my-account ul{
-		  display: none;
 	  }
   
 	  .contact-info {
@@ -1312,7 +1373,6 @@ html, body {
 	  border-radius: 4px;
 	  padding: 10px;
 	  border: 1px solid #ccc;
-	  font-size: 1rem;
   }
   
   /* Estilo para los botones */

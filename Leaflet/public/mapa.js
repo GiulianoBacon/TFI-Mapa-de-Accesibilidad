@@ -1,8 +1,10 @@
 let map;
 let currentMarker;
 let timeout;
+let layerEstablecimientos = L.layerGroup();
+let layerVeredas = L.layerGroup(); 
 
-document.addEventListener('DOMContentLoaded', () => {
+function initMap() {
     map = L.map('map').setView([-34.7334, -58.3920], 16);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -54,7 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Llama a la función para obtener las opiniones cuando se carga la página
     fetchOpinions();
-});
+    layerEstablecimientos.addTo(map);
+    layerVeredas.addTo(map);
+}
 
 async function openEstablishmentOpinionModal(latLng) {
     console.log("Coordenadas:", latLng);
@@ -135,7 +139,7 @@ async function fetchOpinions() {
             const [lat, lng] = key.split(',').map(parseFloat);
             const primerOpinion = group[0];
 
-            const marker = L.marker([lat, lng]).addTo(map);
+            const marker = L.marker([lat, lng]).addTo(layerEstablecimientos);
 
             marker.bindPopup(`
                 <b>Nombre:</b> ${primerOpinion.nombre_establecimiento}<br>
@@ -178,7 +182,7 @@ async function fetchOpinions() {
             const primerOpinion = group[0];
 
             
-            const marker = L.marker([lat, lng], { icon: redSidewalkIcon }).addTo(map);
+            const marker = L.marker([lat, lng], { icon: redSidewalkIcon }).addTo(layerVeredas);
 
 // CAMBIA ESTO:
 marker.bindPopup(`
@@ -514,5 +518,21 @@ async function addOpinion_vereda(event) {
         
     } catch (error) {
         console.error("Hubo un problema con la solicitud:", error);
+    }
+}
+
+function toggleLayer(type) {
+    if (type === 'establecimientos') {
+        if (map.hasLayer(layerEstablecimientos)) {
+            map.removeLayer(layerEstablecimientos);
+        } else {
+            map.addLayer(layerEstablecimientos);
+        }
+    } else {
+        if (map.hasLayer(layerVeredas)) {
+            map.removeLayer(layerVeredas);
+        } else {
+            map.addLayer(layerVeredas);
+        }
     }
 }
