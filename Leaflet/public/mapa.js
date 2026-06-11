@@ -46,7 +46,6 @@ function initMap() {
     layerEstablecimientos.addTo(map);
     layerVeredas.addTo(map);
 
-    // Leyenda
     const leyenda = L.control({ position: 'bottomleft' });
     leyenda.onAdd = function() {
         const div = L.DomUtil.create('div');
@@ -62,6 +61,62 @@ function initMap() {
     leyenda.addTo(map);
 
     fetchOpinions();
+}
+
+// ─────────────────────────────────────────────
+// HELPERS DE PUNTAJE (escala 1-5)
+// ─────────────────────────────────────────────
+const PUNTAJE_LABELS = {
+    1: 'Malo',
+    2: 'Aceptable',
+    3: 'Regular',
+    4: 'Bueno',
+    5: 'Excelente'
+};
+
+function puntajeLabel(p) {
+    return PUNTAJE_LABELS[p] ? `${p} — ${PUNTAJE_LABELS[p]}` : (p ? String(p) : 'No evaluado');
+}
+
+// Convierte puntaje promedio (1-5) a color y etiqueta
+function puntajeResumen(avg) {
+    if (avg === null) return { color: '#aaa', label: 'Sin puntaje', stars: '' };
+    const rounded = Math.round(avg * 10) / 10;
+    let color = avg >= 4 ? '#28a745' : avg >= 2.5 ? '#ffc107' : '#dc3545';
+    let label = PUNTAJE_LABELS[Math.round(avg)] || 'Regular';
+    // Estrellas con medias estrellas aproximadas
+    const stars = renderStars(avg);
+    return { color, label, stars, rounded };
+}
+
+function renderStars(avg) {
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        if (avg >= i) {
+            html += '<span style="color:#ffc107">★</span>';
+        } else if (avg >= i - 0.5) {
+            html += '<span style="color:#ffc107">½</span>';
+        } else {
+            html += '<span style="color:#ddd">★</span>';
+        }
+    }
+    return html;
+}
+
+// Barra de progreso pequeña para campos booleanos
+function barraBoolean(pct, label) {
+    const color = pct >= 66 ? '#28a745' : pct >= 33 ? '#ffc107' : '#dc3545';
+    return `
+        <div style="margin-bottom:5px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px">
+                <span>${label}</span>
+                <span style="color:${color};font-weight:bold">${pct}%</span>
+            </div>
+            <div style="background:#e9ecef;border-radius:4px;height:6px">
+                <div style="width:${pct}%;background:${color};height:6px;border-radius:4px"></div>
+            </div>
+        </div>
+    `;
 }
 
 // ─────────────────────────────────────────────
@@ -100,7 +155,6 @@ async function fetchOpinions() {
         layerVeredas.clearLayers();
         if (verOpinions.length === 0) return;
 
-        // Deduplicar puntos únicos para Overpass
         const puntosUnicos = [];
         const puntosVistos = new Set();
         verOpinions.forEach(op => {
@@ -111,7 +165,6 @@ async function fetchOpinions() {
             }
         });
 
-        // Una sola llamada a Overpass con todos los puntos
         console.log(`Enviando ${puntosUnicos.length} puntos únicos al servidor...`);
         const resWays = await fetch('/getWaysForPoints', {
             method: 'POST',
@@ -121,40 +174,26 @@ async function fetchOpinions() {
 
         if (!resWays.ok) throw new Error("Error al obtener ways de Overpass");
         const waysPorKey = await resWays.json();
-        // waysPorKey = { "lat,lng": { wayId, name, coords } | null, ... }
 
-        // ─────────────────────────────────────────────
-        // AGRUPACIÓN CORRECTA: por wayId únicamente
-        // Cada punto tiene coords distintas pero el mismo wayId
-        // si están en la misma cuadra → se promedian juntos
-        // ─────────────────────────────────────────────
-        const opinionesPorWay = {};   // wayId → [opiniones]
-        const geometriaPorWay = {};   // wayId → wayInfo (coords del segmento representativo)
+        const opinionesPorWay = {};
+        const geometriaPorWay = {};
 
         verOpinions.forEach(op => {
             const puntoKey = `${op.latitud},${op.longitud}`;
             const wayInfo = waysPorKey[puntoKey];
             if (!wayInfo) return;
-
             const wid = String(wayInfo.wayId);
-
             if (!opinionesPorWay[wid]) {
                 opinionesPorWay[wid] = [];
-                // Guardamos la geometría del primer punto que representa este way.
-                // Como recortarACuadra ya ajustó el segmento al punto exacto,
-                // usamos el que tenga más nodos (más representativo de la cuadra).
                 geometriaPorWay[wid] = wayInfo;
             } else {
-                // Si este punto tiene más nodos en su segmento, lo usamos como geometría
                 if (wayInfo.coords.length > geometriaPorWay[wid].coords.length) {
                     geometriaPorWay[wid] = wayInfo;
                 }
             }
-
             opinionesPorWay[wid].push(op);
         });
 
-        // Dibujar una polyline por wayId (una línea por cuadra con todas sus opiniones promediadas)
         Object.entries(opinionesPorWay).forEach(([wayId, ops]) => {
             const wayInfo = geometriaPorWay[wayId];
             const totalOpiniones = ops.length;
@@ -167,19 +206,9 @@ async function fetchOpinions() {
             else if (porcentaje >= 0.33) color = '#ffc107';
             else                          color = '#dc3545';
 
-            const polyline = L.polyline(wayInfo.coords, {
-                color: color,
-                weight: 6,
-                opacity: 0.85
-            }).addTo(layerVeredas);
-
-            polyline.bindPopup(`
-                <b>${wayInfo.name}</b><br>
-                <b>Aptas:</b> ${aptasCount} de ${totalOpiniones} (${pct}%)
-            `);
-            polyline.bindTooltip(`${wayInfo.name} — ${pct}% apta`, {
-                permanent: false, sticky: true, opacity: 0.9
-            });
+            const polyline = L.polyline(wayInfo.coords, { color, weight: 6, opacity: 0.85 }).addTo(layerVeredas);
+            polyline.bindPopup(`<b>${wayInfo.name}</b><br><b>Aptas:</b> ${aptasCount} de ${totalOpiniones} (${pct}%)`);
+            polyline.bindTooltip(`${wayInfo.name} — ${pct}% apta`, { permanent: false, sticky: true, opacity: 0.9 });
             polyline.on('click', () => mostrarOpinionesVereda(wayInfo.name, ops));
         });
 
@@ -191,20 +220,17 @@ async function fetchOpinions() {
 }
 
 // ─────────────────────────────────────────────
-// SIDEBAR — opiniones de vereda
-// Muestra todas las opiniones de la cuadra con dirección,
-// y un botón para agregar otra opinión en esa misma cuadra.
+// SIDEBAR — VEREDA (sin cambios)
 // ─────────────────────────────────────────────
 function mostrarOpinionesVereda(nombreCalle, opinions) {
     const sbar = document.getElementById('sidebar');
     const sidebar = document.getElementById('sidebar-content');
     sbar.style.display = 'block';
+    document.querySelector('.search-container').style.display = 'none';
 
-    // Calcular resumen de la cuadra
     const total = opinions.length;
     const aptas = opinions.filter(op => op.vereda_apta == 1).length;
     const pct = Math.round((aptas / total) * 100);
-
     let colorTexto = pct >= 66 ? '#28a745' : pct >= 33 ? '#e6a800' : '#dc3545';
     let estadoTexto = pct >= 66 ? 'Buena accesibilidad' : pct >= 33 ? 'Accesibilidad media' : 'Baja accesibilidad';
 
@@ -217,25 +243,17 @@ function mostrarOpinionesVereda(nombreCalle, opinions) {
         <hr style="margin:8px 0">
     `;
 
-    // Una tarjeta por opinión
     opinions.forEach(op => {
-        // La dirección está guardada en BD (ubicación.direccion)
         const direccion = op.direccion || nombreCalle;
         sidebar.innerHTML += `
             <div style="font-size:13px;margin-bottom:8px">
                 <div style="font-size:11px;color:#888;margin-bottom:2px">${direccion}</div>
-                <b>${op.nombreUsuario}</b>
-                &nbsp;
-                <span style="
-                    display:inline-block;
-                    padding:1px 7px;
-                    border-radius:10px;
-                    font-size:11px;
+                <b>${op.nombreUsuario}</b>&nbsp;
+                <span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;
                     background:${op.vereda_apta ? '#d4edda' : '#f8d7da'};
-                    color:${op.vereda_apta ? '#155724' : '#721c24'};
-                    font-weight:bold
-                ">${op.vereda_apta ? '✓ Apta' : '✗ No apta'}</span>
-                <br>
+                    color:${op.vereda_apta ? '#155724' : '#721c24'};font-weight:bold">
+                    ${op.vereda_apta ? '✓ Apta' : '✗ No apta'}
+                </span><br>
                 ${op.descripcion_vereda ? `<span style="color:#555">${op.descripcion_vereda}</span><br>` : ''}
                 <span style="font-size:11px;color:#aaa">${op.fecha}</span>
             </div>
@@ -243,8 +261,6 @@ function mostrarOpinionesVereda(nombreCalle, opinions) {
         `;
     });
 
-    // Botón para agregar otra opinión en esta cuadra.
-    // Usamos las coordenadas de la primera opinión como punto de referencia.
     const btnAgregar = document.createElement('button');
     btnAgregar.className = 'btn btn-sm btn-outline-secondary mt-1';
     btnAgregar.innerText = '+ Agregar opinión en esta vereda/cuadra';
@@ -258,7 +274,7 @@ function mostrarOpinionesVereda(nombreCalle, opinions) {
 }
 
 // ─────────────────────────────────────────────
-// SIDEBAR — opiniones de establecimiento
+// SIDEBAR — ESTABLECIMIENTO (nuevo: resumen + detalle expandible)
 // ─────────────────────────────────────────────
 async function fetchOpinionLatLng(latitud, longitud) {
     try {
@@ -276,38 +292,126 @@ async function fetchOpinionLatLng(latitud, longitud) {
             return;
         }
 
-        opinions.forEach(opinion => {
-            sidebar.innerHTML += `
-                <div>
-                    <b>Nombre:</b> ${opinion.nombre_establecimiento}<br>
-                    <b>Usuario:</b> ${opinion.nombreUsuario}<br>
-                    <b>Espacios aptos:</b> ${opinion.espacios_aptos ? 'Sí' : 'No'}<br>
-                    <b>Ascensor apto:</b> ${opinion.ascensor_apto ? 'Sí' : 'No'}<br>
-                    <b>Baños aptos:</b> ${opinion.baños_aptos ? 'Sí' : 'No'}<br>
-                    <b>Puerta apta:</b> ${opinion.puerta_apta ? 'Sí' : 'No'}<br>
-                    <b>Rampa interna:</b> ${opinion.rampa_interna_apta ? 'Sí' : 'No'}<br>
-                    <b>Rampa externa:</b> ${opinion.rampa_externa_apta ? 'Sí' : 'No'}<br>
-                    <b>Desc. espacios:</b> ${opinion.descripcion_espacios || '—'}<br>
-                    <b>Desc. ascensor:</b> ${opinion.descripcion_ascensor || '—'}<br>
-                    <b>Desc. rampa interna:</b> ${opinion.descripcion_rampa_interna || '—'}<br>
-                    <b>Desc. rampa externa:</b> ${opinion.descripcion_rampa_externa || '—'}<br>
-                    <b>Fecha:</b> ${opinion.fecha}<br>
-                    <b>Puntaje:</b> ${opinion.puntaje || 'No evaluado'}
-                </div><hr>
-            `;
+        const nombre = opinions[0].nombre_establecimiento;
+        const total = opinions.length;
+
+        // ── Calcular promedio de puntaje ──
+        const puntajes = opinions.map(op => op.puntaje).filter(p => p !== null && p !== undefined);
+        const avgPuntaje = puntajes.length > 0
+            ? puntajes.reduce((a, b) => a + b, 0) / puntajes.length
+            : null;
+        const resP = puntajeResumen(avgPuntaje);
+
+        // ── Calcular % de cada campo booleano ──
+        const campos = [
+            { key: 'espacios_aptos',      label: 'Espacios aptos'    },
+            { key: 'ascensor_apto',       label: 'Ascensor'          },
+            { key: 'baños_aptos',         label: 'Baños aptos'       },
+            { key: 'puerta_apta',         label: 'Puerta apta'       },
+            { key: 'rampa_interna_apta',  label: 'Rampa interna'     },
+            { key: 'rampa_externa_apta',  label: 'Rampa externa'     },
+        ];
+
+        let barrasHTML = '';
+        campos.forEach(c => {
+            const respondieron = opinions.filter(op => op[c.key] !== null && op[c.key] !== undefined);
+            if (respondieron.length === 0) return;
+            const siCount = respondieron.filter(op => op[c.key] == 1 || op[c.key] === true).length;
+            const pct = Math.round((siCount / respondieron.length) * 100);
+            barrasHTML += barraBoolean(pct, c.label);
         });
 
+        // ── SECCIÓN RESUMEN ──
+        sidebar.innerHTML = `
+            <h6 style="font-weight:bold;margin-bottom:2px">${nombre}</h6>
+            <div style="font-size:12px;color:#888;margin-bottom:10px">${total} opinión${total > 1 ? 'es' : ''}</div>
+
+            <!-- Puntaje promedio -->
+            <div style="text-align:center;padding:10px;background:#f8f9fa;border-radius:8px;margin-bottom:12px">
+                <div style="font-size:22px;margin-bottom:2px">${resP.stars}</div>
+                <div style="font-size:20px;font-weight:bold;color:${resP.color}">${avgPuntaje !== null ? resP.rounded : '—'}</div>
+                <div style="font-size:13px;color:${resP.color};font-weight:bold">${resP.label}</div>
+                ${puntajes.length < total ? `<div style="font-size:11px;color:#aaa">(${puntajes.length} de ${total} con puntaje)</div>` : ''}
+            </div>
+
+            <!-- Barras booleanas -->
+            <div style="margin-bottom:12px">
+                <div style="font-size:12px;font-weight:bold;color:#555;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Accesibilidad por aspecto</div>
+                ${barrasHTML || '<div style="font-size:12px;color:#aaa">Sin datos</div>'}
+            </div>
+
+            <hr style="margin:8px 0">
+
+            <!-- Botón para desplegar opiniones individuales -->
+            <button id="btnVerDetalles"
+                onclick="toggleDetallesEstablecimiento(this)"
+                class="btn btn-sm btn-outline-secondary w-100 mb-2"
+                style="font-size:12px">
+                Ver opiniones detalladas (${total})
+            </button>
+
+            <!-- Contenedor colapsable -->
+            <div id="detallesEstablecimiento" style="display:none"></div>
+        `;
+
+        // Pre-renderizar el HTML de opiniones individuales en el div oculto
+        const contenedor = sidebar.querySelector('#detallesEstablecimiento');
+        opinions.forEach((op, idx) => {
+            const pLabel = puntajeLabel(op.puntaje);
+            const pColor = op.puntaje >= 4 ? '#28a745' : op.puntaje >= 3 ? '#ffc107' : op.puntaje ? '#dc3545' : '#aaa';
+
+            // Campos con "Sí"
+            const aptos = campos.filter(c => op[c.key] == 1 || op[c.key] === true).map(c => c.label);
+            const noAptos = campos.filter(c => op[c.key] == 0 || op[c.key] === false).map(c => c.label);
+
+            const div = document.createElement('div');
+            div.style.cssText = 'border:1px solid #e9ecef;border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px';
+            div.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                    <b>${op.nombreUsuario}</b>
+                    <span style="font-weight:bold;color:${pColor};font-size:13px">${pLabel}</span>
+                </div>
+                ${aptos.length > 0 ? `
+                    <div style="margin-bottom:3px">
+                        <span style="color:#28a745;font-size:11px">✓ ${aptos.join(' · ')}</span>
+                    </div>` : ''}
+                ${noAptos.length > 0 ? `
+                    <div style="margin-bottom:3px">
+                        <span style="color:#dc3545;font-size:11px">✗ ${noAptos.join(' · ')}</span>
+                    </div>` : ''}
+                ${op.descripcion_espacios ? `<div style="color:#555;font-size:12px;margin-top:4px"><i>Espacios:</i> ${op.descripcion_espacios}</div>` : ''}
+                ${op.descripcion_ascensor ? `<div style="color:#555;font-size:12px"><i>Ascensor:</i> ${op.descripcion_ascensor}</div>` : ''}
+                ${op.descripcion_rampa_interna ? `<div style="color:#555;font-size:12px"><i>Rampa int.:</i> ${op.descripcion_rampa_interna}</div>` : ''}
+                ${op.descripcion_rampa_externa ? `<div style="color:#555;font-size:12px"><i>Rampa ext.:</i> ${op.descripcion_rampa_externa}</div>` : ''}
+                <div style="font-size:11px;color:#aaa;margin-top:4px">${op.fecha}</div>
+            `;
+            contenedor.appendChild(div);
+        });
+
+        // Botón agregar
         const btnAgregar = document.createElement('button');
-        btnAgregar.className = 'btn btn-sm btn-primary mt-2';
-        btnAgregar.innerText = 'Agregar otra opinión';
+        btnAgregar.className = 'btn btn-sm btn-primary w-100 mt-1';
+        btnAgregar.innerText = '+ Agregar mi opinión';
         btnAgregar.onclick = () => {
             openEstablishmentOpinionModal({ lat: parseFloat(latitud), lng: parseFloat(longitud) });
-            document.getElementById('sidebar').style.display = 'none';
+            sbar.style.display = 'none';
         };
         sidebar.appendChild(btnAgregar);
 
     } catch (error) {
         console.error('Error obteniendo opiniones:', error);
+    }
+}
+
+// Toggle del panel de detalles individuales
+function toggleDetallesEstablecimiento(btn) {
+    const div = document.getElementById('detallesEstablecimiento');
+    if (div.style.display === 'none') {
+        div.style.display = 'block';
+        btn.textContent = btn.textContent.replace('Ver', 'Ocultar');
+    } else {
+        div.style.display = 'none';
+        btn.textContent = btn.textContent.replace('Ocultar', 'Ver');
     }
 }
 

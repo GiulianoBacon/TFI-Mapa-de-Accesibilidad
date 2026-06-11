@@ -15,9 +15,21 @@
         <div id="header-placeholder"></div>
         <div>
            <div class="button-container">
-                <button onClick="handleSearch()" class="btn btn-primary custom-button">Buscar</button>
-                <input id="busqueda" type="text" placeholder="Buscar ubicación..." onInput="handleInputChange()" class="form-control"/>
-            </div>
+    <i class="fas fa-search search-icon"></i>
+
+    <input
+        id="busqueda"
+        type="text"
+        placeholder="Buscar dirección, calle o establecimiento..."
+        onInput="handleInputChange()"
+        onkeydown="if(event.key==='Enter') handleSearch()"
+        class="form-control"
+    />
+
+    <button onClick="handleSearch()" class="search-btn">
+        Buscar
+    </button>
+</div>
             <ul id="suggestions" class="suggestions-list"></ul>
         </div>
         <div id="map" class="map"></div>
@@ -121,16 +133,11 @@
                                 <label for="puntaje">Puntaje:</label>
                                 <select name="puntaje" id="puntaje" class="form-control" required>
                                     <option value="">Seleccione un puntaje</option>
-                                    <option value="1">1 - Muy malo</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="5">5 - Regular</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                    <option value="9">9</option>
-                                    <option value="10">10 - Excelente</option>
+                                    <option value="1">1 — Muy malo</option>
+                                    <option value="2">2 — Malo</option>
+                                    <option value="3">3 — Regular</option>
+                                    <option value="4">4 — Bueno</option>
+                                    <option value="5">5 — Excelente</option>
                                 </select>
                             </div>
 
