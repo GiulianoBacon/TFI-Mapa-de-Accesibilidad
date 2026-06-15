@@ -1,45 +1,57 @@
+// header.js - versión segura sin localStorage
 function loadHeader() {
-  return fetch('header.html')
-      .then(response => response.text())
-      .then(data => {
-          document.getElementById('header-placeholder').innerHTML = data;
-          if (localStorage.getItem('loggedIn') === 'true') {
-              document.getElementById('signup-link').style.display = 'none';
-              document.getElementById('login-link').style.display = 'none';
-              document.getElementById('logout-container').style.display = 'inline';
-          }
+    return fetch('header.html')
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('header-placeholder').innerHTML = data;
+            return updateAuthState();
+        })
+        .catch(error => console.error('Error al cargar el header:', error));
+}
 
-          const barsIcon = document.querySelector('.navbar .fa-bars');
-          const menu = document.querySelector('.navbar .menu');
+function updateAuthState() {
+    const signupLink = document.getElementById('signup-link');
+    const loginLink = document.getElementById('login-link');
+    const logoutContainer = document.getElementById('logout-container');
+    const profileContainer = document.getElementById('profile-container');
 
-          if (barsIcon && menu) {
-              barsIcon.addEventListener('click', function () {
-                  menu.classList.toggle('menu-open');
-                  barsIcon.classList.toggle('fa-bars');
-                  barsIcon.classList.toggle('fa-xmark');
-              });
+    if (!signupLink || !loginLink || !logoutContainer || !profileContainer) {
+        console.warn('Elementos del header no encontrados');
+        return;
+    }
 
-              menu.querySelectorAll('a').forEach(function (link) {
-                  link.addEventListener('click', function () {
-                      menu.classList.remove('menu-open');
-                      barsIcon.classList.add('fa-bars');
-                      barsIcon.classList.remove('fa-xmark');
-                  });
-              });
-
-              document.addEventListener('click', function (e) {
-                  if (!barsIcon.contains(e.target) && !menu.contains(e.target)) {
-                      menu.classList.remove('menu-open');
-                      barsIcon.classList.add('fa-bars');
-                      barsIcon.classList.remove('fa-xmark');
-                  }
-              });
-          }
-      })
-      .catch(error => console.error('Error al cargar el header:', error));
+    fetch('/api/me', { credentials: 'include' })
+        .then(response => {
+        if (response.ok) {
+            signupLink.style.display = 'none';
+            loginLink.style.display = 'none';
+            logoutContainer.style.display = 'inline';
+            profileContainer.style.display = 'inline';
+        } else {
+            signupLink.style.display = 'inline';
+            loginLink.style.display = 'inline';
+            logoutContainer.style.display = 'none';
+            profileContainer.style.display = 'none';
+        }
+        })
+        .catch(error => {
+        console.error('Error verificando sesión:', error);
+        signupLink.style.display = 'inline';
+        loginLink.style.display = 'inline';
+        logoutContainer.style.display = 'none';
+        profileContainer.style.display = 'none';
+        });
 }
 
 function logout() {
-  localStorage.removeItem('loggedIn');
-  window.location.href = '/';
+    fetch('/logout', { method: 'POST', credentials: 'include' })
+        .then(() => window.location.href = '/')
+        .catch(error => {
+            console.error('Error al cerrar sesión:', error);
+            window.location.href = '/';
+        });
+}
+
+function refreshAuthState() {
+    return updateAuthState();
 }

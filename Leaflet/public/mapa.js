@@ -474,9 +474,18 @@ async function openVeredaOpinionModal(latLng) {
 // ─────────────────────────────────────────────
 // FORMULARIOS
 // ─────────────────────────────────────────────
-function addOpinion_establecimiento(event) {
+async function addOpinion_establecimiento(event) {
     event.preventDefault();
-    if (localStorage.getItem('loggedIn') !== 'true') {
+
+    // Verificar autenticación antes de continuar
+    try {
+        const authCheck = await fetch('/api/me', { credentials: 'include' });
+        if (!authCheck.ok) {
+            alert('Debes iniciar sesión para publicar una opinión');
+            return;
+        }
+    } catch (error) {
+        console.error('Error verificando autenticación:', error);
         alert('Debes iniciar sesión para publicar una opinión');
         return;
     }
@@ -485,7 +494,6 @@ function addOpinion_establecimiento(event) {
     const data = {
         latitud: formData.get("latitud"),
         longitud: formData.get("longitud"),
-        Usuario_idUsuario: 1,
         nombre_establecimiento: formData.get("nombre_establecimiento"),
         espacios_aptos: formData.has("espacios_aptos"),
         ascensor_apto: formData.has("ascensor_apto"),
@@ -503,21 +511,44 @@ function addOpinion_establecimiento(event) {
     fetch("/createOpinion_establecimiento", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        credentials: 'include'   // importante para enviar la cookie de sesión
     })
-    .then(res => { if (!res.ok) throw new Error(res.statusText); return res.json(); })
+    .then(res => {
+        if (!res.ok) {
+            if (res.status === 401) throw new Error('No autenticado');
+            throw new Error(res.statusText);
+        }
+        return res.json();
+    })
     .then(data => {
         alert(data.message);
-        fetchOpinions();
+        fetchOpinions();  // recargar el mapa para mostrar la nueva opinión
         event.target.reset();
         document.getElementById('modalAddOpinion').style.display = 'none';
     })
-    .catch(e => console.error("Error:", e));
+    .catch(e => {
+        console.error("Error:", e);
+        if (e.message === 'No autenticado') {
+            alert('Debes iniciar sesión para publicar una opinión');
+        } else {
+            alert('Hubo un error al enviar la opinión. Intenta nuevamente.');
+        }
+    });
 }
 
 async function addOpinion_vereda(event) {
     event.preventDefault();
-    if (localStorage.getItem('loggedIn') !== 'true') {
+
+    // Verificar autenticación antes de continuar
+    try {
+        const authCheck = await fetch('/api/me', { credentials: 'include' });
+        if (!authCheck.ok) {
+            alert('Debes iniciar sesión para publicar una opinión');
+            return;
+        }
+    } catch (error) {
+        console.error('Error verificando autenticación:', error);
         alert('Debes iniciar sesión para publicar una opinión');
         return;
     }
@@ -529,7 +560,6 @@ async function addOpinion_vereda(event) {
         latitud: formData.get("latitud_vereda"),
         longitud: formData.get("longitud_vereda"),
         direccion: direccionCompleta,
-        Usuario_idUsuario: 1,
         vereda_apta: formData.has("vereda_apta") ? 1 : 0,
         descripcion_vereda: formData.get("descripcion_vereda")
     };
@@ -538,16 +568,25 @@ async function addOpinion_vereda(event) {
         const res = await fetch("/createOpinion_vereda", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
+            credentials: 'include'
         });
-        if (!res.ok) throw new Error(res.statusText);
+        if (!res.ok) {
+            if (res.status === 401) throw new Error('No autenticado');
+            throw new Error(res.statusText);
+        }
         const result = await res.json();
         alert(result.message);
-        fetchOpinions();
+        fetchOpinions();   // recargar el mapa
         event.target.reset();
         document.getElementById('modalAddOpinionVereda').style.display = 'none';
     } catch (e) {
         console.error("Error:", e);
+        if (e.message === 'No autenticado') {
+            alert('Debes iniciar sesión para publicar una opinión');
+        } else {
+            alert('Hubo un error al enviar la opinión. Intenta nuevamente.');
+        }
     }
 }
 

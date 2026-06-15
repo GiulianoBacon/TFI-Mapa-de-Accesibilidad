@@ -39,7 +39,7 @@ html, body {
     overflow-y: auto;
     background-color: var(--primary-color);
     padding: 15px;
-    z-index: 1000;
+    z-index: 1001;
     box-shadow: 2px 0 5px rgba(0,0,0,0.1);
     font-size: 14px;
 }
@@ -1142,6 +1142,10 @@ html, body {
 	  font-weight: 400;
 	  font-size: 1.6rem;
   }
+  
+.bg-opinion-card {
+    background-color: var(--background-color)!important;
+}
   
   /* ************ */
   /*       MEDIA QUERIES -- 768px       */

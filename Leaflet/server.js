@@ -18,9 +18,14 @@ const db = mysql.createConnection({
 });
 
 app.use(session({
-    secret: 'mapa-accesibilidad-vial',
-    resave: false,
-    saveUninitialized: true
+  secret: 'mapa-accesibilidad-vial',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false
+  }
 }));
 
 db.connect((err) => {
@@ -36,6 +41,14 @@ db.connect((err) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+function requireAuth(req, res, next) {
+    if (req.session.authenticated && req.session.idUsuario) {
+        next();
+    } else {
+        res.status(401).json({ error: 'No autenticado' });
+    }
+}
 
 // ─────────────────────────────────────────────
 // OVERPASS: una sola query con todos los puntos
@@ -226,13 +239,15 @@ out geom;
 // RUTAS EXISTENTES
 // ─────────────────────────────────────────────
 
-app.post("/createOpinion_establecimiento", (req, res) => {
+app.post("/createOpinion_establecimiento", requireAuth, (req, res) => {
     const {
-        latitud, longitud, Usuario_idUsuario, nombre_establecimiento,
+        latitud, longitud, nombre_establecimiento,
         espacios_aptos, ascensor_apto, baños_aptos, puerta_apta,
         rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna,
         descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, puntaje
     } = req.body;
+    
+    const usuarioId = req.session.idUsuario; // <- de la sesión
 
     const radio = 0.0002;
     const buscarUbicacion = `
@@ -254,14 +269,14 @@ app.post("/createOpinion_establecimiento", (req, res) => {
                     rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna,
                     descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, fecha
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,CURDATE())
-            `, [idUbicacion, Usuario_idUsuario, nombre_establecimiento, espacios_aptos,
+            `, [idUbicacion, usuarioId, nombre_establecimiento, espacios_aptos,
                 ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta,
                 descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios],
             (err, result) => {
                 if (err) { console.log(err); return res.status(500).json(err); }
                 db.query(
                     `INSERT INTO puntaje_establecimiento(Usuario_idUsuario, Opinion_establecimiento_idOpinion, puntaje) VALUES(?,?,?)`,
-                    [Usuario_idUsuario, result.insertId, puntaje],
+                    [usuarioId, result.insertId, puntaje],
                     (err) => {
                         if (err) { console.log(err); return res.status(500).json(err); }
                         res.json({ message: "Opinión registrada" });
@@ -283,14 +298,16 @@ app.post("/createOpinion_establecimiento", (req, res) => {
     });
 });
 
-app.post("/createOpinion_vereda", (req, res) => {
-    const { latitud, longitud, Usuario_idUsuario, vereda_apta, descripcion_vereda, direccion } = req.body;
+app.post("/createOpinion_vereda", requireAuth, (req, res) => {
+    const { latitud, longitud, vereda_apta, descripcion_vereda, direccion } = req.body;
+    const usuarioId = req.session.idUsuario;
+    
     db.query('INSERT INTO ubicación(latitud, longitud, direccion) VALUES (?, ?, ?)',
         [latitud, longitud, direccion], (err, result) => {
             if (err) { console.log(err); return res.status(500).json({ error: "Error al guardar la ubicación" }); }
             db.query(
                 'INSERT INTO Opinion_vereda(Ubicación_idUbicación, Usuario_idUsuario, vereda_apta, descripcion_vereda, fecha) VALUES (?, ?, ?, ?, curdate())',
-                [result.insertId, Usuario_idUsuario, vereda_apta, descripcion_vereda],
+                [result.insertId, usuarioId, vereda_apta, descripcion_vereda],
                 (err) => {
                     if (err) { console.log(err); return res.status(500).json({ error: "Error al guardar la opinión" }); }
                     res.json({ message: "Opinión de vereda registrada con éxito" });
@@ -313,6 +330,19 @@ app.post("/create", (req, res) => {
     });
 });
 
+app.get('/api/me', (req, res) => {
+    if (req.session.authenticated && req.session.idUsuario) {
+        db.query('SELECT idUsuario, email, usuario FROM usuario WHERE idUsuario = ?', [req.session.idUsuario], (err, results) => {
+            if (err || results.length === 0) {
+                return res.status(500).json({ error: 'Error al obtener usuario' });
+            }
+            res.json(results[0]);
+        });
+    } else {
+        res.status(401).json({ error: 'No autenticado' });
+    }
+});
+
 app.get("/usuarios", (req, res) => {
     db.query('SELECT * FROM usuario', (err, result) => {
         if (err) console.log(err);
@@ -321,7 +351,7 @@ app.get("/usuarios", (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.post('/login', (req, res) => {
@@ -340,6 +370,16 @@ app.post('/login', (req, res) => {
         } else {
             res.json({ success: false, message: 'Usuario no encontrado' });
         }
+    });
+});
+
+app.post('/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al cerrar sesión' });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ success: true });
     });
 });
 
@@ -399,5 +439,94 @@ app.get("/getOpinionVereda", (req, res) => {
     `, [lat, lng], (err, result) => {
         if (err) res.status(500).json({ error: "Error al obtener opiniones de vereda" });
         else res.json(result);
+    });
+});
+
+app.get("/getPerfil", requireAuth, (req, res) => {
+    const idUsuario = req.session.idUsuario;
+    db.query(
+        "SELECT idUsuario, email, usuario FROM usuario WHERE idUsuario = ?",
+        [idUsuario], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: "Error en la base de datos" });
+            }
+            if (results.length === 0) {
+                return res.status(404).json({ error: "Usuario no encontrado" });
+            }
+            res.json(results[0]);
+        }
+    );
+});
+
+app.get("/getOpinionesUsuario", requireAuth, (req, res) => {
+    const idUsuario = req.session.idUsuario;
+    const queryEst = `
+        SELECT 
+            'establecimiento' AS tipo,
+            oe.idOpinion AS id,
+            oe.fecha,
+            oe.nombre_establecimiento AS nombre,
+            u.latitud,
+            u.longitud,
+            u.direccion,
+            oe.espacios_aptos,
+            oe.ascensor_apto,
+            oe.baños_aptos,
+            oe.puerta_apta,
+            oe.rampa_interna_apta,
+            oe.rampa_externa_apta,
+            oe.descripcion_rampa_interna,
+            oe.descripcion_ascensor,
+            oe.descripcion_rampa_externa,
+            oe.descripcion_espacios,
+            pe.puntaje
+        FROM opinion_establecimiento oe
+        INNER JOIN ubicación u ON oe.Ubicación_idUbicación = u.idUbicación
+        LEFT JOIN puntaje_establecimiento pe 
+            ON pe.Opinion_establecimiento_idOpinion = oe.idOpinion 
+            AND pe.Usuario_idUsuario = oe.Usuario_idUsuario
+        WHERE oe.Usuario_idUsuario = ?
+        ORDER BY oe.fecha DESC
+    `;
+
+    const queryVer = `
+        SELECT 
+            'vereda' AS tipo,
+            ov.idOpinion_vereda AS id,
+            ov.fecha,
+            u.direccion AS nombre,
+            u.latitud,
+            u.longitud,
+            ov.vereda_apta,
+            ov.descripcion_vereda
+        FROM opinion_vereda ov
+        INNER JOIN ubicación u ON ov.Ubicación_idUbicación = u.idUbicación
+        WHERE ov.Usuario_idUsuario = ?
+        ORDER BY ov.fecha DESC
+    `;
+
+    Promise.all([
+        new Promise((resolve, reject) => {
+            db.query(queryEst, [idUsuario], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        }),
+        new Promise((resolve, reject) => {
+            db.query(queryVer, [idUsuario], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+            });
+        })
+    ])
+    .then(([opinionesEst, opinionesVer]) => {
+        const todas = [...opinionesEst, ...opinionesVer];
+        todas.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        res.json(todas);
+    })
+    .catch(err => {
+        console.error(err);
+        res.status(500).json({ error: "Error al obtener opiniones del usuario" });
     });
 });

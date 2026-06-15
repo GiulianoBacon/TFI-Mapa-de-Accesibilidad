@@ -36,9 +36,6 @@ async function handleRegistrar() {
     const data = await response.json();
 
     if (data.success) {
-      // Si el registro y auto-login fueron exitosos
-      localStorage.setItem('loggedIn', 'true'); // Mantenemos la lógica de persistencia que ya usás
-      
       // Redirigimos al usuario a la página de inicio
       window.location.href = '/'; 
     } else {
