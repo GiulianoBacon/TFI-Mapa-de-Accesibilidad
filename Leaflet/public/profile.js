@@ -1,3 +1,5 @@
+let todasLasOpiniones = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     cargarPerfil();
     cargarOpiniones();
@@ -20,27 +22,74 @@ async function cargarPerfil() {
 
 async function cargarOpiniones() {
     const container = document.getElementById('opinions-list');
-    container.innerHTML = '<div class="text-center text-muted" style="font-size: 1.2rem;">Cargando opiniones...</div>';
+
+    container.innerHTML =
+        '<div class="text-center text-muted" style="font-size: 1.2rem;">Cargando opiniones...</div>';
 
     try {
-        const response = await fetch(`/getOpinionesUsuario`);
-        if (!response.ok) throw new Error('Error al cargar opiniones');
-        const opiniones = await response.json();
+        const response = await fetch('/getOpinionesUsuario');
 
-        if (opiniones.length === 0) {
-            container.innerHTML = '<div class="alert alert-info text-center" style="font-size: 1.1rem;">Aún no has publicado ninguna opinión.</div>';
+        if (!response.ok) {
+            throw new Error('Error al cargar opiniones');
+        }
+
+        todasLasOpiniones = await response.json();
+
+        if (todasLasOpiniones.length === 0) {
+            container.innerHTML =
+                '<div class="alert alert-info text-center" style="font-size: 1.1rem;">Aún no has publicado ninguna opinión.</div>';
             return;
         }
 
-        container.innerHTML = '';
-        opiniones.forEach(opinion => {
-            const card = crearTarjetaOpinion(opinion);
-            container.appendChild(card);
-        });
+        mostrarOpiniones(todasLasOpiniones);
+
     } catch (error) {
         console.error('Error cargando opiniones:', error);
-        container.innerHTML = '<div class="alert alert-danger text-center" style="font-size: 1.1rem;">No se pudieron cargar tus opiniones. Intenta más tarde.</div>';
+
+        container.innerHTML =
+            '<div class="alert alert-danger text-center" style="font-size: 1.1rem;">No se pudieron cargar tus opiniones. Intenta más tarde.</div>';
     }
+}
+
+function mostrarOpiniones(opiniones) {
+    const container = document.getElementById('opinions-list');
+
+    if (opiniones.length === 0) {
+        container.innerHTML =
+            '<div class="alert alert-info text-center">No hay opiniones para mostrar.</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+
+    opiniones.forEach(opinion => {
+        const card = crearTarjetaOpinion(opinion);
+        container.appendChild(card);
+    });
+}
+
+function filtrarOpiniones(tipo) {
+
+    document.querySelectorAll('.filtro-opinion').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-primary');
+    });
+
+    const botonActivo = document.getElementById(`btn-${tipo}`);
+
+    if (botonActivo) {
+        botonActivo.classList.remove('btn-outline-primary');
+        botonActivo.classList.add('btn-primary');
+    }
+
+    if (tipo === 'todas') {
+        mostrarOpiniones(todasLasOpiniones);
+        return;
+    }
+
+    const filtradas = todasLasOpiniones.filter(op => op.tipo === tipo);
+
+    mostrarOpiniones(filtradas);
 }
 
 function crearTarjetaOpinion(opinion) {
