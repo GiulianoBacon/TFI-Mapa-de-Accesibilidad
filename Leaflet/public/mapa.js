@@ -226,7 +226,6 @@ function mostrarOpinionesVereda(nombreCalle, opinions) {
     const sbar = document.getElementById('sidebar');
     const sidebar = document.getElementById('sidebar-content');
     sbar.style.display = 'block';
-    document.querySelector('.search-container').style.display = 'none';
 
     const total = opinions.length;
     const aptas = opinions.filter(op => op.vereda_apta == 1).length;
