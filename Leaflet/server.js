@@ -249,7 +249,7 @@ app.post("/createOpinion_establecimiento", requireAuth, (req, res) => {
     
     const usuarioId = req.session.idUsuario; // <- de la sesión
 
-    const radio = 0.0002;
+    const radio = 0.0006;
     const buscarUbicacion = `
         SELECT ubicación.idUbicación FROM ubicación
         INNER JOIN opinion_establecimiento ON ubicación.idUbicación = opinion_establecimiento.Ubicación_idUbicación
