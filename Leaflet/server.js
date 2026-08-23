@@ -385,9 +385,12 @@ app.post('/logout', (req, res) => {
 
 app.get("/getOpinions", (req, res) => {
     db.query(`
-        SELECT ubicación.latitud, ubicación.longitud, opinion_establecimiento.nombre_establecimiento
+        SELECT 
+            ubicación.latitud, ubicación.longitud, opinion_establecimiento.nombre_establecimiento, COALESCE(ROUND(AVG(puntaje_establecimiento.puntaje), 1), 0) AS promedio_puntaje
         FROM ubicación
         INNER JOIN opinion_establecimiento ON ubicación.idUbicación = opinion_establecimiento.Ubicación_idUbicación
+        LEFT JOIN puntaje_establecimiento ON opinion_establecimiento.idOpinion = puntaje_establecimiento.Opinion_establecimiento_idOpinion
+        GROUP BY ubicación.latitud, ubicación.longitud, opinion_establecimiento.nombre_establecimiento
     `, (err, result) => {
         if (err) res.status(500).json({ error: "Error al obtener las opiniones" });
         else res.json(result);

@@ -131,19 +131,34 @@ async function fetchOpinions() {
 
         layerEstablecimientos.clearLayers();
 
-        const grouped = {};
-        estOpinions.forEach(op => {
-            const key = `${op.latitud},${op.longitud}`;
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(op);
-        });
+        estOpinions.forEach(est => {
+            const lat = parseFloat(est.latitud);
+            const lng = parseFloat(est.longitud);
+            const avgPuntaje = parseFloat(est.promedio_puntaje);
+            let markerColor = '#dc3545';
+            if (avgPuntaje >= 4) {
+                markerColor = '#28a745';
+            } else if (avgPuntaje >= 2.5) {
+                markerColor = '#ffc107';
+            }
 
-        Object.entries(grouped).forEach(([key, group]) => {
-            const [lat, lng] = key.split(',').map(parseFloat);
-            const primerOpinion = group[0];
-            const marker = L.marker([lat, lng]).addTo(layerEstablecimientos);
-            marker.bindPopup(`<b>Nombre:</b> ${primerOpinion.nombre_establecimiento}<br><b>Opiniones:</b> ${group.length}`);
-            marker.bindTooltip(primerOpinion.nombre_establecimiento, { permanent: false, direction: 'top', offset: [0, -10], opacity: 0.9 });
+            const svgIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `<svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 21.9 12.5 41 12.5 41C12.5 41 25 21.9 25 12.5C25 5.6 19.4 0 12.5 0Z" 
+                            fill="${markerColor}" stroke="white" stroke-width="2"/>
+                        <circle cx="12.5" cy="12.5" r="4" fill="white" opacity="0.9"/>
+                    </svg>`,
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34]
+            });
+            
+            const marker = L.marker([lat, lng], {
+                icon: svgIcon
+            }).addTo(layerEstablecimientos);
+
+            marker.bindTooltip(est.nombre_establecimiento, { permanent: false, direction: 'top', offset: [0, -10], opacity: 0.9 });
             marker.on('click', () => fetchOpinionLatLng(lat, lng));
         });
 
@@ -218,7 +233,6 @@ async function fetchOpinions() {
         console.error('Error en fetchOpinions:', error);
     }
 }
-
 // ─────────────────────────────────────────────
 // SIDEBAR — VEREDA (sin cambios)
 // ─────────────────────────────────────────────
