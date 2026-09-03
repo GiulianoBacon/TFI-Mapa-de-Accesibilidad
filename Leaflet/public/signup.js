@@ -20,7 +20,7 @@ async function handleRegistrar() {
   }
 
   try {
-    const response = await fetch("http://localhost:3001/create", {
+    const response = await fetch("/create", {
       method: "POST",
       headers: {
         'Content-Type': 'application/json',
@@ -44,16 +44,6 @@ async function handleRegistrar() {
     }
   } catch (error) {
     alert("Ocurrió un error: " + error.message);
-  }
-};
-
-async function getUsuarios() {
-  try {
-    const response = await fetch("http://localhost:3001/usuarios");
-    const data = await response.json();
-    console.log(data);
-  } catch (error) {
-    alert("Error al obtener los usuarios: " + error.message);
   }
 };
 

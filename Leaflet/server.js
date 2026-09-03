@@ -1,14 +1,119 @@
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const mysql = require("mysql2");
 const bcrypt = require('bcrypt');
 const https = require('https');
+const multer = require('multer');
+const Anthropic = require('@anthropic-ai/sdk');
+const { z } = require('zod');
+const { zodOutputFormat } = require('@anthropic-ai/sdk/helpers/zod');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
+
+// ─────────────────────────────────────────────
+// IA: moderación de opiniones y resúmenes en lenguaje natural
+// ─────────────────────────────────────────────
+// Si no hay ANTHROPIC_API_KEY configurada, las funciones de IA se
+// desactivan solas (moderación = aprobar todo, resumen = omitido) para que
+// el resto del sitio funcione igual sin necesidad de una clave.
+const IA_HABILITADA = !!process.env.ANTHROPIC_API_KEY;
+const anthropic = IA_HABILITADA ? new Anthropic() : null;
+if (!IA_HABILITADA) {
+    console.warn('ANTHROPIC_API_KEY no configurada: moderación y resúmenes con IA desactivados.');
+}
+
+const ModeracionSchema = z.object({
+    aprobado: z.boolean(),
+    motivo: z.string().nullable()
+});
+
+// Revisa el texto libre de una opinión (spam, contenido ofensivo, o una
+// contradicción evidente entre lo marcado y lo escrito, ej: "apta" pero
+// la descripción dice que está totalmente rota). Solo rechaza casos claros:
+// el objetivo es filtrar basura, no litigar cada opinión subjetiva.
+async function moderarOpinion(resumenParaModerar) {
+    if (!IA_HABILITADA) return { aprobado: true, motivo: null };
+
+    const textoLibre = Object.values(resumenParaModerar.descripciones || {}).filter(Boolean).join(' ').trim();
+    if (!textoLibre) return { aprobado: true, motivo: null }; // nada que moderar
+
+    try {
+        const response = await anthropic.messages.parse({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1024,
+            system: 'Moderás opiniones de un mapa colaborativo de accesibilidad edilicia y de veredas en Argentina. ' +
+                'Aprobá casi todo: la mayoría de las opiniones son legítimas aunque estén mal escritas o sean muy breves. ' +
+                'Rechazá SOLO si el texto es spam/publicidad, contenido ofensivo o no tiene ninguna relación con accesibilidad, ' +
+                'o si contradice de forma evidente y directa los datos marcados (por ejemplo: se marcó como apto/apta pero el texto ' +
+                'describe claramente que está roto, inaccesible o no se puede usar). Ante la duda, aprobá.',
+            messages: [{
+                role: 'user',
+                content: `Datos marcados: ${JSON.stringify(resumenParaModerar.campos)}\nTexto escrito por el usuario: ${textoLibre}`
+            }],
+            output_config: { format: zodOutputFormat(ModeracionSchema) }
+        });
+
+        if (!response.parsed_output) return { aprobado: true, motivo: null }; // si falla el parseo, no bloqueamos
+        return response.parsed_output;
+    } catch (e) {
+        console.error('Error moderando con IA (se aprueba por defecto):', e.message);
+        return { aprobado: true, motivo: null };
+    }
+}
+
+// Genera un párrafo breve en español resumiendo la accesibilidad de un
+// lugar o cuadra a partir de los datos ya agregados. Devuelve null si la IA
+// no está disponible o falla, para que el llamador simplemente lo omita.
+async function generarResumenIA(contexto) {
+    if (!IA_HABILITADA) return null;
+
+    try {
+        const response = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 300,
+            system: 'Escribís resúmenes breves y neutrales (2-3 oraciones, en español rioplatense) sobre la accesibilidad ' +
+                'de un lugar o una vereda, a partir de datos agregados de opiniones de una comunidad. ' +
+                'Mencioná lo positivo y lo negativo si ambos aparecen en los datos. No inventes datos que no te dieron. ' +
+                'No uses viñetas ni markdown, solo texto corrido.',
+            messages: [{ role: 'user', content: JSON.stringify(contexto) }]
+        });
+        const bloque = response.content.find(b => b.type === 'text');
+        return bloque ? bloque.text.trim() : null;
+    } catch (e) {
+        console.error('Error generando resumen con IA:', e.message);
+        return null;
+    }
+}
+
+// ─────────────────────────────────────────────
+// FOTOS: configuración de subida de archivos
+// ─────────────────────────────────────────────
+const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const fotoStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, file, cb) => {
+        const nombreUnico = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${path.extname(file.originalname).toLowerCase()}`;
+        cb(null, nombreUnico);
+    }
+});
+
+const upload = multer({
+    storage: fotoStorage,
+    limits: { fileSize: 5 * 1024 * 1024, files: 6 }, // 5MB por foto, máx. 6 fotos por vez
+    fileFilter: (req, file, cb) => {
+        const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (tiposPermitidos.includes(file.mimetype)) cb(null, true);
+        else cb(new Error('Formato de imagen no permitido'));
+    }
+});
 
 const db = mysql.createConnection({
     host: "localhost",
@@ -135,6 +240,18 @@ function recortarACuadra(geometry, punto) {
 // Cache: almacena el resultado por punto (lat,lng redondeados)
 const wayCache = {};
 
+// Normaliza un nombre de calle para poder comparar "Av. Manuel Ugarte",
+// "manuel ugarte" y "MANUEL UGARTE 2586" entre sí.
+function normalizarNombreCalle(str) {
+    if (!str) return '';
+    return str
+        .normalize('NFD').replace(/[̀-ͯ]/g, '') // quitar acentos
+        .toLowerCase()
+        .replace(/^(av\.?|avenida|calle|pasaje|psje\.?)\s+/, '') // prefijos comunes
+        .replace(/\s*\d+\s*$/, '') // altura al final
+        .trim();
+}
+
 // Ruta que recibe TODOS los puntos de una vez y hace
 // una sola query a Overpass para todos juntos
 app.post('/getWaysForPoints', async (req, res) => {
@@ -188,35 +305,54 @@ out geom;
             return res.json(resultado);
         }
 
-        // Para cada punto nuevo, encontrar el way más cercano en la respuesta
+        // Para cada punto nuevo, encontrar el way más cercano en la respuesta.
+        // Si el punto trae una dirección reportada por el usuario, se prioriza
+        // un way cuyo nombre coincida con esa calle (evita "engancharse" con
+        // la calle que cruza en una esquina, que puede estar más cerca en línea recta).
         puntosNuevos.forEach(p => {
             const punto = { lat: parseFloat(p.lat), lon: parseFloat(p.lng) };
+            const calleEsperada = normalizarNombreCalle(p.direccion);
+
             let bestWay = null;
             let bestDist = Infinity;
+            let bestWayPorNombre = null;
+            let bestDistPorNombre = Infinity;
 
             data.elements.forEach(way => {
                 if (!way.geometry || way.geometry.length === 0) return;
+
+                const nombreWay = normalizarNombreCalle(way.tags && way.tags.name);
+                const coincideNombre = calleEsperada && nombreWay &&
+                    (nombreWay === calleEsperada || nombreWay.includes(calleEsperada) || calleEsperada.includes(nombreWay));
+
                 way.geometry.forEach(node => {
                     const d = dist(node, punto);
                     if (d < bestDist) {
                         bestDist = d;
                         bestWay = way;
                     }
+                    if (coincideNombre && d < bestDistPorNombre) {
+                        bestDistPorNombre = d;
+                        bestWayPorNombre = way;
+                    }
                 });
             });
 
-            if (!bestWay) {
+            // Si hay un way cercano cuyo nombre coincide con la dirección reportada, se prefiere.
+            const wayElegido = bestWayPorNombre || bestWay;
+
+            if (!wayElegido) {
                 wayCache[p.cacheKey] = null;
                 resultado[p.key] = null;
                 return;
             }
 
             // Recortar a la cuadra del punto
-            const segmento = recortarACuadra(bestWay.geometry, punto);
+            const segmento = recortarACuadra(wayElegido.geometry, punto);
 
             const info = {
-                wayId: bestWay.id,
-                name: (bestWay.tags && bestWay.tags.name) ? bestWay.tags.name : 'Calle sin nombre',
+                wayId: wayElegido.id,
+                name: (wayElegido.tags && wayElegido.tags.name) ? wayElegido.tags.name : 'Calle sin nombre',
                 coords: segmento.map(n => [n.lat, n.lon])
             };
 
@@ -239,14 +375,22 @@ out geom;
 // RUTAS EXISTENTES
 // ─────────────────────────────────────────────
 
-app.post("/createOpinion_establecimiento", requireAuth, (req, res) => {
+app.post("/createOpinion_establecimiento", requireAuth, async (req, res) => {
     const {
         latitud, longitud, nombre_establecimiento,
         espacios_aptos, ascensor_apto, baños_aptos, puerta_apta,
         rampa_interna_apta, rampa_externa_apta, descripcion_rampa_interna,
         descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios, puntaje
     } = req.body;
-    
+
+    const moderacion = await moderarOpinion({
+        campos: { espacios_aptos, ascensor_apto, baños_aptos, puerta_apta, rampa_interna_apta, rampa_externa_apta },
+        descripciones: { descripcion_rampa_interna, descripcion_ascensor, descripcion_rampa_externa, descripcion_espacios }
+    });
+    if (!moderacion.aprobado) {
+        return res.status(422).json({ error: 'moderacion', motivo: moderacion.motivo || 'No pudimos publicar esta opinión.' });
+    }
+
     const usuarioId = req.session.idUsuario; // <- de la sesión
 
     const radio = 0.0006;
@@ -279,7 +423,7 @@ app.post("/createOpinion_establecimiento", requireAuth, (req, res) => {
                     [usuarioId, result.insertId, puntaje],
                     (err) => {
                         if (err) { console.log(err); return res.status(500).json(err); }
-                        res.json({ message: "Opinión registrada" });
+                        res.json({ message: "Opinión registrada", idUbicacion });
                     }
                 );
             });
@@ -298,10 +442,18 @@ app.post("/createOpinion_establecimiento", requireAuth, (req, res) => {
     });
 });
 
-app.post("/createOpinion_vereda", requireAuth, (req, res) => {
+app.post("/createOpinion_vereda", requireAuth, async (req, res) => {
     const { latitud, longitud, vereda_apta, descripcion_vereda, direccion } = req.body;
     const usuarioId = req.session.idUsuario;
-    
+
+    const moderacion = await moderarOpinion({
+        campos: { vereda_apta },
+        descripciones: { descripcion_vereda }
+    });
+    if (!moderacion.aprobado) {
+        return res.status(422).json({ error: 'moderacion', motivo: moderacion.motivo || 'No pudimos publicar esta opinión.' });
+    }
+
     db.query('INSERT INTO ubicación(latitud, longitud, direccion) VALUES (?, ?, ?)',
         [latitud, longitud, direccion], (err, result) => {
             if (err) { console.log(err); return res.status(500).json({ error: "Error al guardar la ubicación" }); }
@@ -310,11 +462,66 @@ app.post("/createOpinion_vereda", requireAuth, (req, res) => {
                 [result.insertId, usuarioId, vereda_apta, descripcion_vereda],
                 (err) => {
                     if (err) { console.log(err); return res.status(500).json({ error: "Error al guardar la opinión" }); }
-                    res.json({ message: "Opinión de vereda registrada con éxito" });
+                    res.json({ message: "Opinión de vereda registrada con éxito", idUbicacion: result.insertId });
                 }
             );
         }
     );
+});
+
+// ─────────────────────────────────────────────
+// FOTOS
+// ─────────────────────────────────────────────
+app.post("/uploadFotos", requireAuth, (req, res) => {
+    upload.array('fotos', 6)(req, res, (err) => {
+        if (err) {
+            console.log(err);
+            return res.status(400).json({ error: err.message || 'Error al subir las fotos' });
+        }
+
+        const idUbicacion = parseInt(req.body.idUbicacion, 10);
+        const usuarioId = req.session.idUsuario;
+        const archivos = req.files || [];
+
+        if (!idUbicacion) {
+            return res.status(400).json({ error: 'Falta la ubicación a la que asociar las fotos' });
+        }
+        if (archivos.length === 0) {
+            return res.json({ message: 'Sin fotos para subir', fotos: [] });
+        }
+
+        const valores = archivos.map(f => [idUbicacion, usuarioId, f.filename]);
+        db.query(
+            'INSERT INTO foto (Ubicación_idUbicación, Usuario_idUsuario, archivo, fecha) VALUES ?',
+            [valores.map(v => [...v, new Date()])],
+            (err) => {
+                if (err) { console.log(err); return res.status(500).json({ error: 'Error al guardar las fotos' }); }
+                res.json({ message: 'Fotos subidas correctamente', fotos: archivos.map(f => `/uploads/${f.filename}`) });
+            }
+        );
+    });
+});
+
+app.get('/getFotos', (req, res) => {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const radio = 0.0006;
+
+    db.query(`
+        SELECT foto.archivo, foto.fecha, usuario.usuario AS nombreUsuario
+        FROM foto
+        INNER JOIN ubicación ON foto.Ubicación_idUbicación = ubicación.idUbicación
+        INNER JOIN usuario ON foto.Usuario_idUsuario = usuario.idUsuario
+        WHERE ABS(ubicación.latitud - ?) < ? AND ABS(ubicación.longitud - ?) < ?
+        ORDER BY foto.fecha DESC
+    `, [lat, radio, lng, radio], (err, result) => {
+        if (err) { console.log(err); return res.status(500).json({ error: 'Error al obtener las fotos' }); }
+        res.json(result.map(f => ({
+            url: `/uploads/${f.archivo}`,
+            fecha: f.fecha,
+            nombreUsuario: f.nombreUsuario
+        })));
+    });
 });
 
 app.post("/create", (req, res) => {
@@ -341,13 +548,6 @@ app.get('/api/me', (req, res) => {
     } else {
         res.status(401).json({ error: 'No autenticado' });
     }
-});
-
-app.get("/usuarios", (req, res) => {
-    db.query('SELECT * FROM usuario', (err, result) => {
-        if (err) console.log(err);
-        else res.send(result);
-    });
 });
 
 app.get('/', (req, res) => {
@@ -397,6 +597,33 @@ app.get("/getOpinions", (req, res) => {
     });
 });
 
+app.get("/getTopColaboradores", (req, res) => {
+    db.query(`
+        SELECT
+            usuario.usuario AS nombreUsuario,
+            COALESCE(est.cantidad, 0) AS establecimientos,
+            COALESCE(ver.cantidad, 0) AS veredas,
+            COALESCE(est.cantidad, 0) + COALESCE(ver.cantidad, 0) AS total
+        FROM usuario
+        LEFT JOIN (
+            SELECT Usuario_idUsuario, COUNT(*) AS cantidad
+            FROM opinion_establecimiento
+            GROUP BY Usuario_idUsuario
+        ) est ON est.Usuario_idUsuario = usuario.idUsuario
+        LEFT JOIN (
+            SELECT Usuario_idUsuario, COUNT(*) AS cantidad
+            FROM opinion_vereda
+            GROUP BY Usuario_idUsuario
+        ) ver ON ver.Usuario_idUsuario = usuario.idUsuario
+        HAVING total > 0
+        ORDER BY total DESC, nombreUsuario ASC
+        LIMIT 10
+    `, (err, result) => {
+        if (err) { console.log(err); res.status(500).json({ error: "Error al obtener el ranking de colaboradores" }); }
+        else res.json(result);
+    });
+});
+
 app.get('/getOpinion', (req, res) => {
     const lat = parseFloat(req.query.lat);
     const lng = parseFloat(req.query.lng);
@@ -430,6 +657,17 @@ app.get("/getOpinionsVereda", (req, res) => {
     });
 });
 
+// Resumen en lenguaje natural (IA) de un lugar o una cuadra, a partir de
+// datos ya agregados en el cliente. No requiere sesión: es información
+// pública, igual que el resto de las opiniones.
+app.post("/resumenLugar", async (req, res) => {
+    const { contexto } = req.body;
+    if (!contexto) return res.status(400).json({ error: 'Falta el contexto a resumir' });
+
+    const resumen = await generarResumenIA(contexto);
+    res.json({ resumen }); // resumen puede ser null si la IA no está disponible
+});
+
 app.get("/getOpinionVereda", (req, res) => {
     const lat = parseFloat(req.query.lat);
     const lng = parseFloat(req.query.lng);
@@ -443,6 +681,155 @@ app.get("/getOpinionVereda", (req, res) => {
         if (err) res.status(500).json({ error: "Error al obtener opiniones de vereda" });
         else res.json(result);
     });
+});
+
+
+// ─────────────────────────────────────────────
+// RUTA ACCESIBLE (reintegrado del server original)
+// ─────────────────────────────────────────────
+
+function httpGet(url) {
+    return new Promise((resolve, reject) => {
+        const lib = url.startsWith('https') ? https : require('http');
+        lib.get(url, { headers: { 'User-Agent': 'MapaAccesibilidad/1.0' } }, (res) => {
+            let data = '';
+            res.on('data', c => data += c);
+            res.on('end', () => {
+                try { resolve(JSON.parse(data)); }
+                catch(e) { reject(new Error('Respuesta no JSON: ' + data.substring(0, 100))); }
+            });
+        }).on('error', reject);
+    });
+}
+
+function decodePolyline(encoded, precision = 5) {
+    const factor = Math.pow(10, precision);
+    const coords = [];
+    let index = 0, lat = 0, lng = 0;
+    while (index < encoded.length) {
+        let b, shift = 0, result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+        shift = 0; result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+        coords.push([lat / factor, lng / factor]);
+    }
+    return coords;
+}
+
+function obtenerScoresDeVereda() {
+    return new Promise((resolve, reject) => {
+        db.query(`
+            SELECT ubicación.latitud, ubicación.longitud,
+                   AVG(opinion_vereda.vereda_apta) AS score_promedio,
+                   COUNT(*) AS total_opiniones
+            FROM opinion_vereda
+            INNER JOIN ubicación ON opinion_vereda.Ubicación_idUbicación = ubicación.idUbicación
+            GROUP BY ubicación.latitud, ubicación.longitud
+        `, (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
+app.post('/rutaAccesible', async (req, res) => {
+    const { origen, destino } = req.body;
+    if (!origen || !destino) return res.status(400).json({ error: 'Faltan origen y destino' });
+
+    try {
+        const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${origen.lng},${origen.lat};${destino.lng},${destino.lat}?alternatives=3&geometries=polyline&overview=full&steps=false`;
+        console.log('Consultando OSRM...');
+        const osrmData = await httpGet(osrmUrl);
+
+        if (!osrmData.routes || osrmData.routes.length === 0) {
+            return res.status(404).json({ error: 'No se encontró ruta' });
+        }
+
+        const scoresDB = await obtenerScoresDeVereda();
+        const scoreMap = {};
+        scoresDB.forEach(row => {
+            const key = `${parseFloat(row.latitud).toFixed(4)},${parseFloat(row.longitud).toFixed(4)}`;
+            scoreMap[key] = { score: parseFloat(row.score_promedio), total: row.total_opiniones };
+        });
+
+        console.log(`Scores de vereda cargados: ${Object.keys(scoreMap).length} puntos`);
+
+        let mejorRuta = null;
+        let mejorScore = -Infinity;
+
+        for (const ruta of osrmData.routes) {
+            const coords = decodePolyline(ruta.geometry);
+            let sumaScores = 0;
+            let puntosConScore = 0;
+            const TOLERANCIA = 0.0005;
+
+            coords.forEach(c => {
+                const latKey = parseFloat(c[0].toFixed(4));
+                const lngKey = parseFloat(c[1].toFixed(4));
+                for (let dlat = -1; dlat <= 1; dlat++) {
+                    for (let dlng = -1; dlng <= 1; dlng++) {
+                        const key = `${(latKey + dlat * TOLERANCIA).toFixed(4)},${(lngKey + dlng * TOLERANCIA).toFixed(4)}`;
+                        if (scoreMap[key]) { sumaScores += scoreMap[key].score; puntosConScore++; break; }
+                    }
+                }
+            });
+
+            const scoreAccesibilidad = puntosConScore > 0 ? sumaScores / puntosConScore : 0.5;
+            const distanciaBase = osrmData.routes[0].distance;
+            const penalizacionDistancia = ((ruta.distance - distanciaBase) / distanciaBase) * 0.5;
+            const scoreFinal = scoreAccesibilidad - penalizacionDistancia;
+
+            console.log(`Ruta ${osrmData.routes.indexOf(ruta)+1}: ${(ruta.distance/1000).toFixed(2)}km, acc=${scoreAccesibilidad.toFixed(2)}, final=${scoreFinal.toFixed(2)}`);
+
+            if (scoreFinal > mejorScore) {
+                mejorScore = scoreFinal;
+                mejorRuta = { ruta, coords, scoreAccesibilidad, puntosConScore };
+            }
+        }
+
+        const { ruta, coords, scoreAccesibilidad, puntosConScore } = mejorRuta;
+        const TAMANO_SEGMENTO = Math.max(1, Math.floor(coords.length / 20));
+        const segmentos = [];
+        const TOLERANCIA = 0.0005;
+
+        for (let i = 0; i < coords.length - TAMANO_SEGMENTO; i += TAMANO_SEGMENTO) {
+            const segCoords = coords.slice(i, i + TAMANO_SEGMENTO + 1);
+            let sumaLocal = 0, contLocal = 0;
+            segCoords.forEach(c => {
+                const latKey = parseFloat(c[0].toFixed(4));
+                const lngKey = parseFloat(c[1].toFixed(4));
+                for (let dlat = -1; dlat <= 1; dlat++) {
+                    for (let dlng = -1; dlng <= 1; dlng++) {
+                        const key = `${(latKey + dlat * TOLERANCIA).toFixed(4)},${(lngKey + dlng * TOLERANCIA).toFixed(4)}`;
+                        if (scoreMap[key]) { sumaLocal += scoreMap[key].score; contLocal++; break; }
+                    }
+                }
+            });
+            segmentos.push({ coords: segCoords, score: contLocal > 0 ? sumaLocal / contLocal : -1 });
+        }
+
+        const totalCallesRuta = Math.ceil(coords.length / TAMANO_SEGMENTO);
+        const callesConDatos = segmentos.filter(s => s.score >= 0).length;
+        let advertencia = null;
+        if (callesConDatos === 0) advertencia = 'Esta ruta aún no tiene opiniones de vereda. El camino se calcula por distancia.';
+        else if (callesConDatos < totalCallesRuta * 0.3) advertencia = 'Pocos tramos de esta ruta tienen opiniones. Los resultados son parciales.';
+
+        res.json({
+            coordenadas: coords,
+            segmentos,
+            distanciaMetros: ruta.distance,
+            duracionSegundos: ruta.duration,
+            scoreAccesibilidad: puntosConScore > 0 ? scoreAccesibilidad : -1,
+            callesEvaluadas: callesConDatos,
+            advertencia
+        });
+
+    } catch (e) {
+        console.error('Error en /rutaAccesible:', e.message);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.get("/getPerfil", requireAuth, (req, res) => {

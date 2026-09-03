@@ -19,15 +19,66 @@
     <!-- Banner principal -->
     <section class="banner">
         <div class="content-banner">
-            <p>Mapa de Accesibilidad Colaborativo</p>
+            <p>Movilidad urbana colaborativa</p>
             <h2>
-                Mapa de Accesibilidad Colaborativo es una plataforma colaborativa
-                diseñada para personas con movilidad reducida. Aquí podrás explorar
-                un mapa interactivo donde otros usuarios han compartido reseñas sobre
-                la accesibilidad de diversos establecimientos y de veredas públicas.
-                ¡Ayuda a otros compartiendo tu experiencia!
+                Explorá y compartí la accesibilidad real de establecimientos y
+                veredas de tu ciudad. Una plataforma hecha entre todos para que
+                moverse por el barrio sea más fácil para personas con movilidad reducida.
             </h2>
-            <a href="mapa.html" class="btn-hero">Ir al Mapa</a>
+            <a href="mapa.html" class="btn-hero">Ir al mapa</a>
+        </div>
+    </section>
+
+    <!-- Cómo funciona -->
+    <section class="how-it-works">
+        <div class="container">
+            <h3>¿Cómo funciona?</h3>
+            <div class="steps">
+                <div class="step flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <div class="step-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                            <h4>Explorá el mapa</h4>
+                        </div>
+                        <div class="flip-card-back">
+                            <p>Recorré establecimientos y veredas coloreados según qué tan accesibles son, según la comunidad.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="step flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <div class="step-icon"><i class="fa-solid fa-pen-to-square"></i></div>
+                            <h4>Sumá tu opinión</h4>
+                        </div>
+                        <div class="flip-card-back">
+                            <p>Registrate y contá si una rampa, un baño o una vereda son aptos para movilidad reducida.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="step flip-card">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front">
+                            <div class="step-icon"><i class="fa-solid fa-people-group"></i></div>
+                            <h4>Ayudá a otros</h4>
+                        </div>
+                        <div class="flip-card-back">
+                            <p>Cada reseña suma información real para que otras personas puedan planificar mejor su recorrido.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Top colaboradores -->
+    <section class="top-colaboradores">
+        <div class="container">
+            <h3>Top colaboradores</h3>
+            <p>Las personas que más aportaron a que este mapa sea útil para todos.</p>
+            <div id="ranking-container" class="ranking-grid">
+                <div class="ranking-loading">Cargando ranking...</div>
+            </div>
         </div>
     </section>
 
@@ -37,9 +88,11 @@
     <!-- Scripts -->
     <script src="header.js"></script>
     <script src="footer.js"></script>
+    <script src="ranking.js"></script>
     <script>
         loadHeader();
         loadFooter();
+        cargarRanking();
     </script>
 </body>
 </html>

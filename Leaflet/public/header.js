@@ -4,9 +4,21 @@ function loadHeader() {
         .then(response => response.text())
         .then(data => {
             document.getElementById('header-placeholder').innerHTML = data;
+            setupMenuToggle();
             return updateAuthState();
         })
         .catch(error => console.error('Error al cargar el header:', error));
+}
+
+function setupMenuToggle() {
+    const toggle = document.getElementById('menu-toggle');
+    const menu = document.getElementById('main-menu');
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener('click', () => menu.classList.toggle('menu-open'));
+    menu.addEventListener('click', (event) => {
+        if (event.target.tagName === 'A') menu.classList.remove('menu-open');
+    });
 }
 
 function updateAuthState() {

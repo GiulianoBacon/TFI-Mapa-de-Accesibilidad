@@ -3,20 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Accesibilidad Colaborativo</title>
+    <title>Contacto — Mapa de Accesibilidad Colaborativo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 </head>
 <body>
     <div id="header-placeholder"></div>
 
-    <div>
-        Contacto
-    </div>
-    
+    <section class="contact-page">
+        <div class="container">
+            <h2>Contacto</h2>
+            <p>¿Tenés dudas, sugerencias o encontraste un error en el mapa? Escribinos.</p>
+
+            <div class="contact-cards">
+                <div class="contact-card">
+                    <i class="fa-solid fa-envelope"></i>
+                    <h4>Email</h4>
+                    <p><a href="mailto:licsistemas@unla.edu.ar">licsistemas@unla.edu.ar</a></p>
+                </div>
+                <div class="contact-card">
+                    <i class="fa-solid fa-phone"></i>
+                    <h4>Teléfono</h4>
+                    <p>011 5533-5600</p>
+                </div>
+                <div class="contact-card">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <h4>Dirección</h4>
+                    <p>29 de Septiembre 3901<br>Remedios de Escalada</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div id="footer-placeholder"></div>
+
     <script src="header.js"></script>
+    <script src="footer.js"></script>
     <script>
         loadHeader();
+        loadFooter();
     </script>
 </body>
 </html>
